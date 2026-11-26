@@ -1,23 +1,44 @@
 # Spatial Graffiti Study 001
 
-An interactive browser prototype for LifeAfterLogic.
+LifeAfterLogic's first browser experiment for a rotating collection of spatial graffiti scenes.
 
-## Controls
-- Drag to orbit around the scene ring.
-- Drag vertically to change the viewing angle.
-- Scroll to zoom.
-- Double-click to reset.
-- The scene ring slowly rotates when idle.
+## Current build
 
-## Prototype status
-This first pass uses six Pexels video clips arranged as 3D scene fragments with a lightweight particle layer. It is **not yet a true 4D Gaussian reconstruction**. The next stage is to reconstruct selected footage into tracked 3D points/Gaussians and replace the video fragments with those spatial assets.
+The page now renders **real Gaussian splat captures** through the Luma Web SDK and Three.js. The captures are loaded as 3D scene objects in one shared world — they are not video textures, image cards, or CSS panels.
 
-## Footage credits
-- [Graffiti artist spray painting on wall — cottonbro studio](https://www.pexels.com/video/graffiti-artist-spray-painting-on-wall-7108924/)
-- [A man doing graffiti art on a wall — cottonbro studio](https://www.pexels.com/video/a-man-doing-graffiti-art-on-a-wall-7110836/)
-- [Video of a person painting graffiti — cottonbro studio](https://www.pexels.com/video/video-of-a-person-painting-graffiti-7109795/)
-- [Graffiti artist in an urban underpass — cottonbro studio](https://www.pexels.com/video/graffiti-artist-spray-painting-on-wall-7109796/)
-- [A person doing graffiti art — Pat Whelen](https://www.pexels.com/video/a-person-doing-graffiti-art-by-using-a-spray-paint-5621707/)
-- [A person creating graffiti using spray paint — cottonbro studio](https://www.pexels.com/video/a-person-creating-vandal-using-spray-paint-7149482/)
+- Six independent splat scenes arranged around a horizontal orbit
+- Slightly offset starting camera and different scene heights / tilts
+- Slow automatic rotation of the complete scene group
+- Mouse / touch orbit, zoom and pan
+- Black environment with no rectangular scene frames
 
-The source pages mark the clips as free to use under the Pexels licence. Check the licence terms before using the clips in a final commercial deployment.
+## Important limitation
+
+The current public test assets are **static 3D Gaussian captures of street-art locations** by @Volt_Edge, used only to validate the real splat renderer and spatial composition. They are not moving graffiti artists and are not 4D reconstructions.
+
+The intended final artwork is a set of dynamic 4D Gaussian reconstructions of graffiti artists tagging walls. That requires original source footage or exported per-frame 4D Gaussian data. A rendered MP4 reference is not the underlying Gaussian scene data and cannot be converted back into the original splats.
+
+## Temporary public test captures
+
+- [Faraday Street / Bentoghoul](https://lumalabs.ai/capture/3582f3b0-565e-443f-9165-3571c0721fbc)
+- [Stevenson Place / July](https://lumalabs.ai/capture/1a487b86-38a7-466d-856b-5d9ad2f84fab)
+- [Faraday Street / June](https://lumalabs.ai/capture/b101171b-cf5f-4669-ab44-d9fa39e69898)
+- [Graffiti Palace / Lamp post](https://lumalabs.ai/capture/9c6e8bac-3b79-4f39-a605-58999d33c33c)
+- [Faraday Street / April](https://lumalabs.ai/capture/94f2efd7-f65d-4b7f-b455-536e95643bad)
+- [STIK Door / Brick Lane](https://lumalabs.ai/capture/3adabd81-8ef0-4257-92cb-a2929ef8aa8a)
+
+All temporary captures are credited to @Volt_Edge. Replace them with LifeAfterLogic's own licensed 4D graffiti captures before any final studio launch.
+
+## Rendering stack
+
+- Three.js
+- @lumaai/luma-web for public Luma Gaussian capture loading
+- GitHub Pages for static hosting
+
+## Next stage
+
+1. Obtain or shoot a short continuous clip of a graffiti artist tagging a wall.
+2. Reconstruct the clip into temporally consistent 3D points / Gaussian data.
+3. Export a compact per-frame or 4D splat sequence.
+4. Replace the temporary static captures with those dynamic scene assets.
+5. Keep the same shared orbit, with the splat data animating independently in each scene.

@@ -16,7 +16,7 @@ body{color:var(--white);-webkit-font-smoothing:antialiased}
 #dust{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.85}
 .vignette{position:absolute;inset:0;z-index:5;pointer-events:none;background:radial-gradient(ellipse at center,transparent 30%,rgba(0,0,0,.28) 72%,rgba(0,0,0,.8) 130%)}
 #orbit{position:absolute;left:50%;top:49%;width:0;height:0;transform-style:preserve-3d;will-change:transform}
-.scene{position:absolute;left:0;top:0;width:var(--w);height:var(--h);transform-style:preserve-3d;transform-origin:center center;transform:translate(-50%,-50%) rotateY(var(--angle)) translateZ(var(--radius)) translateY(var(--lift)) rotateZ(var(--tilt));backface-visibility:hidden;will-change:transform;pointer-events:none}
+.scene{position:absolute;left:0;top:0;width:var(--w);height:var(--height);transform-style:preserve-3d;transform-origin:center center;transform:translate(-50%,-50%) rotateY(var(--angle)) translateZ(var(--radius)) translateY(var(--lift)) rotateZ(var(--tilt));backface-visibility:hidden;will-change:transform;pointer-events:none}
 .scene-frame{position:absolute;inset:0;overflow:hidden;transform-style:preserve-3d;clip-path:polygon(5% 7%,16% 2%,87% 0,98% 12%,100% 80%,91% 96%,72% 100%,8% 94%,0 78%,2% 22%);background:#171917;filter:drop-shadow(0 18px 50px rgba(0,0,0,.6));opacity:.94;transition:opacity .5s,filter .5s}
 .scene-frame:before{content:"";position:absolute;inset:-2px;z-index:2;pointer-events:none;background:linear-gradient(125deg,rgba(255,255,255,.18),transparent 23%,transparent 70%,rgba(255,255,255,.1));mix-blend-mode:screen}
 .scene-frame:after{content:"";position:absolute;inset:-1px;z-index:3;pointer-events:none;background:radial-gradient(ellipse at center,transparent 46%,rgba(0,0,0,.18) 72%,#050505 112%);mix-blend-mode:multiply}
@@ -24,7 +24,7 @@ body{color:var(--white);-webkit-font-smoothing:antialiased}
 .scene:nth-child(2) video{object-position:50% 50%}
 .scene:nth-child(4) video,.scene:nth-child(6) video{object-position:center 42%}
 .scene-particles{position:absolute;inset:-15%;z-index:4;overflow:visible;pointer-events:none;transform-style:preserve-3d;mask-image:radial-gradient(ellipse at center,#000 32%,rgba(0,0,0,.72) 58%,transparent 82%)}
-.splat{position:absolute;left:var(--x);top:var(--y);width:var(--s);height:var(--s);border-radius:50%;background:hsla(var(--h),88%,78%,var(--a));box-shadow:0 0 7px 1px hsla(var(--h),95%,72%,calc(var(--a)*.5));transform:translate3d(0,0,var(--z));opacity:.8;animation:twinkle var(--t) ease-in-out var(--d) infinite alternate}
+.splat{position:absolute;left:var(--x);top:var(--y);width:var(--s);height:var(--s);border-radius:50%;background:hsla(var(--hue),88%,78%,var(--a));box-shadow:0 0 7px 1px hsla(var(--hue),95%,72%,calc(var(--a)*.5));transform:translate3d(0,0,var(--z));opacity:.8;animation:twinkle var(--t) ease-in-out var(--d) infinite alternate}
 @keyframes twinkle{from{opacity:.12;scale:.7}to{opacity:.85;scale:1.25}}
 .scene-index{position:absolute;z-index:6;left:6%;bottom:7%;display:flex;gap:9px;align-items:center;font-size:9px;line-height:1;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.72);text-shadow:0 1px 12px #000;pointer-events:none}
 .scene-index b{font-weight:500;color:#fff}
@@ -60,37 +60,37 @@ body{color:var(--white);-webkit-font-smoothing:antialiased}
 <main id="stage" aria-label="Interactive rotating collection of graffiti video scenes. Drag to orbit and scroll to zoom.">
  <canvas id="dust"></canvas>
  <div id="orbit">
-  <article class="scene is-front" data-angle="0" style="--angle:0deg;--w:430px;--h:270px;--lift:-20px;--tilt:-2deg;--h:56">
+  <article class="scene is-front" data-angle="0" style="--angle:0deg;--w:430px;--height:270px;--lift:-20px;--tilt:-2deg;--hue:56">
    <div class="scene-frame">
     <video muted loop playsinline autoplay preload="metadata" poster="https://images.pexels.com/videos/7108924/pexels-photo-7108924.jpeg?auto=compress&dpr=1&h=750&w=1260"><source src="https://videos.pexels.com/video-files/7108924/7108924-uhd_4096_2160_25fps.mp4" type="video/mp4"></video>
     <div class="scene-particles"></div><div class="scene-index"><b>01</b><i></i>DAYLIGHT / MURAL</div>
    </div>
   </article>
-  <article class="scene" data-angle="60" style="--angle:60deg;--w:390px;--h:250px;--lift:48px;--tilt:3deg;--h:78">
+  <article class="scene" data-angle="60" style="--angle:60deg;--w:390px;--height:250px;--lift:48px;--tilt:3deg;--hue:78">
    <div class="scene-frame">
     <video muted loop playsinline preload="metadata" poster="https://images.pexels.com/videos/7110836/pexels-photo-7110836.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=900"><source src="https://videos.pexels.com/video-files/7110836/7110836-uhd_4096_2160_25fps.mp4" type="video/mp4"></video>
     <div class="scene-particles"></div><div class="scene-index"><b>02</b><i></i>UNDERPASS / TAG</div>
    </div>
   </article>
-  <article class="scene" data-angle="120" style="--angle:120deg;--w:420px;--h:270px;--lift:-56px;--tilt:-3deg;--h:185">
+  <article class="scene" data-angle="120" style="--angle:120deg;--w:420px;--height:270px;--lift:-56px;--tilt:-3deg;--hue:185">
    <div class="scene-frame">
     <video muted loop playsinline preload="metadata" poster="https://images.pexels.com/videos/7109795/pexels-photo-7109795.jpeg?auto=compress&dpr=1&h=750&w=1260"><source src="https://videos.pexels.com/video-files/7109795/7109795-uhd_4096_2160_25fps.mp4" type="video/mp4"></video>
     <div class="scene-particles"></div><div class="scene-index"><b>03</b><i></i>CONCRETE / STUDY</div>
    </div>
   </article>
-  <article class="scene" data-angle="180" data-shape="portrait" style="--angle:180deg;--w:270px;--h:410px;--lift:28px;--tilt:2deg;--h:48">
+  <article class="scene" data-angle="180" data-shape="portrait" style="--angle:180deg;--w:270px;--height:410px;--lift:28px;--tilt:2deg;--hue:48">
    <div class="scene-frame">
     <video muted loop playsinline preload="metadata" poster="https://images.pexels.com/videos/7109796/pexels-photo-7109796.jpeg?auto=compress&dpr=1&h=750&w=1260"><source src="https://videos.pexels.com/video-files/7109796/7109796-uhd_2160_4096_25fps.mp4" type="video/mp4"></video>
     <div class="scene-particles"></div><div class="scene-index"><b>04</b><i></i>ALLEY / COLOUR</div>
    </div>
   </article>
-  <article class="scene" data-angle="240" style="--angle:240deg;--w:400px;--h:250px;--lift:-38px;--tilt:2deg;--h:325">
+  <article class="scene" data-angle="240" style="--angle:240deg;--w:400px;--height:250px;--lift:-38px;--tilt:2deg;--hue:325">
    <div class="scene-frame">
     <video muted loop playsinline preload="metadata" poster="https://images.pexels.com/videos/5621707/pexels-photo-5621707.jpeg?auto=compress&dpr=1&h=750&w=1260"><source src="https://videos.pexels.com/video-files/5621707/5621707-hd_1920_1080_24fps.mp4" type="video/mp4"></video>
     <div class="scene-particles"></div><div class="scene-index"><b>05</b><i></i>STREET / PROCESS</div>
    </div>
   </article>
-  <article class="scene" data-angle="300" style="--angle:300deg;--w:270px;--h:405px;--lift:58px;--tilt:-2deg;--h:18">
+  <article class="scene" data-angle="300" style="--angle:300deg;--w:270px;--height:405px;--lift:58px;--tilt:-2deg;--hue:18">
    <div class="scene-frame">
     <video muted loop playsinline preload="metadata" poster="https://images.pexels.com/videos/7149482/pexels-photo-7149482.jpeg?auto=compress&dpr=1&h=750&w=1260"><source src="https://videos.pexels.com/video-files/7149482/7149482-uhd_2160_4096_25fps.mp4" type="video/mp4"></video>
     <div class="scene-particles"></div><div class="scene-index"><b>06</b><i></i>AFTER DARK</div>
@@ -170,7 +170,7 @@ body{color:var(--white);-webkit-font-smoothing:antialiased}
    p.style.setProperty('--t',(2.2+Math.random()*5)+'s');
    p.style.setProperty('--d',(-Math.random()*6)+'s');
    const hue=[54,76,185,330,28,0][index];
-   p.style.setProperty('--h',hue+(Math.random()*24-12));
+   p.style.setProperty('--hue',hue+(Math.random()*24-12));
    layer.appendChild(p);
   }
  });

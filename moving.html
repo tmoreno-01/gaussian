@@ -1,7 +1,7 @@
 <!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Matter of Perspective — moving research</title><style>
 *{box-sizing:border-box}body{margin:0;background:#030303;color:#eee;font:13px Arial,sans-serif;overflow:hidden}canvas{display:block;touch-action:none}#ui{position:fixed;inset:0;pointer-events:none;display:flex;flex-direction:column;justify-content:space-between;padding:24px}#top,#bottom{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}#title{font-size:16px;letter-spacing:-.03em}button,label,select,input{pointer-events:auto}button,label.file,select{background:#111a;border:1px solid #ffffff35;color:#fff;padding:9px 12px;font:inherit;cursor:pointer}input[type=range]{accent-color:#ddd;max-width:120px}#status{color:#aaa;font-size:11px}#drop{position:fixed;inset:0;display:grid;place-content:center;text-align:center;gap:14px;background:#030303e8;padding:24px;z-index:3}#drop[hidden]{display:none}#drop strong{font-size:clamp(24px,5vw,48px);font-weight:400;letter-spacing:-.06em}#drop p{max-width:460px;color:#999;line-height:1.5;margin:0 auto}#drop label{justify-self:center}#drop.drag{background:#202020e8}#controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap}#controls label{display:flex;align-items:center;gap:5px}#error{color:#f6a79c;max-width:500px;overflow-wrap:anywhere}input[type=file]{display:none}button:disabled{opacity:.4} @media(max-width:600px){#ui{padding:12px}#controls{gap:6px}input[type=range]{max-width:76px}}
 </style><script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.157.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.157.0/examples/jsm/"}}</script><body>
-<div id="drop"><strong>Matter of Perspective</strong><p>Drop the original ST4RTrack ZIP here. The 3D frames are decoded locally; your footage is never uploaded.</p><label class="file" for="file">Choose ZIP</label><div id="error" role="status"></div></div><input id="file" type="file" accept=".zip"><div id="ui"><div id="top"><div id="title">Matter of Perspective / moving research</div><label class="file" for="file">Open sequence</label></div><div id="bottom"><div id="controls"><button id="play" disabled>Pause</button><button id="orbit">Orbit on</button><label>Size <input id="size" type="range" min="0.35" max="1.8" step="0.05" value="0.95"></label><label>Frame <input id="scrub" type="range" min="0" max="149" value="0"></label><button id="reset">Reset view</button></div><div id="status">Awaiting sequence</div></div></div>
+<div id="drop"><strong>Matter of Perspective</strong><p>Drop the original ST4RTrack ZIP here. The 3D frames are decoded locally; your footage is never uploaded.</p><label class="file" for="file">Choose ZIP</label><div id="error" role="status"></div></div><input id="file" type="file" accept=".zip"><div id="ui"><div id="top"><div id="title">Matter of Perspective / moving research</div><label class="file" for="file">Open sequence</label></div><div id="bottom"><div id="controls"><button id="play" disabled>Pause</button><button id="orbit">Gentle orbit</button><label>Detail <select id="detail"><option value="2" selected>Balanced</option><option value="4">Fine</option><option value="1">Original</option></select></label><label>Size <input id="size" type="range" min="0.35" max="1.8" step="0.05" value="0.95"></label><label>Frame <input id="scrub" type="range" min="0" max="149" value="0"></label><button id="reset">Reset view</button></div><div id="status">Awaiting sequence</div></div></div>
 <script type="module">
 import * as THREE from 'three';import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 const $=id=>document.getElementById(id), status=$('status'),drop=$('drop');
@@ -10,7 +10,7 @@ const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(43,innerWidth/i
 const root=new THREE.Group();scene.add(root);let cloud=null,geom=null,material=null;
 const shader={vertexShader:`
 uniform sampler2D pa,pb,ca,cb;
-uniform int gridW,gridH;
+uniform int gridW,gridH,samples;
 uniform float blend,span,sizeScale,pixelScale;
 out vec3 vColor;
 flat out float valid;
@@ -28,9 +28,10 @@ bool joined(Sample a,Sample b){
 }
 Sample halfPoint(Sample a,Sample b){return Sample(mix(a.p,b.p,.5),mix(a.c,b.c,.5),mix(a.r,b.r,.5));}
 void main(){
- int id=gl_VertexID/4,sub=gl_VertexID%4;
+ int id=gl_VertexID/samples,sub=gl_VertexID%samples;
  ivec2 xy=ivec2(id%gridW,id/gridW);
  Sample p=readPoint(xy);valid=1.;
+ if(samples==2&&sub==1){sub=3;}
  if(sub!=0){
   if(sub==1){
    if(xy.x+1>=gridW)valid=0.;else{Sample r=readPoint(xy+ivec2(1,0));if(joined(p,r))p=halfPoint(p,r);else valid=0.;}
@@ -46,7 +47,7 @@ void main(){
  vColor=p.c;
  vec4 mv=modelViewMatrix*vec4(p.p,1.);
  gl_Position=valid>.5?projectionMatrix*mv:vec4(2.,2.,2.,1.);
- gl_PointSize=clamp(clamp(p.r*.88,span*.00032,span*.0042)*sizeScale*pixelScale/max(.01,-mv.z),1.0,12.0);
+ gl_PointSize=clamp(clamp(p.r*(samples==4?.88:1.12),span*.00032,span*.0042)*sizeScale*pixelScale/max(.01,-mv.z),1.0,12.0);
 }`,fragmentShader:`
 in vec3 vColor;
 flat in float valid;
@@ -59,60 +60,79 @@ void main(){
  if(alpha<.08)discard;
  outColor=vec4(vColor,alpha);
 }`};
-let worker=null, generation=0, info=null, cache=new Map(), pending=new Set(), playing=true, orbit=true, current=0, anchor=0, elapsed=0,last=0,lastStats=0, shown=-1, buffered=false,initial=null;const AHEAD=20, KEEP=26;let gpuFrames=new Map(),pairKey='';
-function resetView(){if(!initial)return;controls.target.set(...initial.center);camera.position.set(initial.center[0]+initial.span*.19,initial.center[1]+initial.span*.17,initial.center[2]+initial.span*1.3);controls.update();}
-$('reset').onclick=resetView;$('orbit').onclick=()=>{orbit=!orbit;$('orbit').textContent=orbit?'Orbit on':'Orbit off';};$('play').onclick=()=>{playing=!playing;last=0;$('play').textContent=playing?'Pause':'Play';};$('size').oninput=()=>{if(material)material.uniforms.sizeScale.value=Number($('size').value);};$('scrub').oninput=()=>{if(!info)return;current=Number($('scrub').value);elapsed=current/info.fps;last=0;buffered=false;requestWindow();};
-function requestWindow(){if(!info||!worker)return;for(let i=-1;i<AHEAD;i++){const n=(current+i+info.count)%info.count;if(!cache.has(n)&&!pending.has(n)){pending.add(n);worker.postMessage({type:'frame',index:n});}}for(const k of cache.keys()){const d=(k-current+info.count)%info.count;if(d>=KEEP&&d<info.count-2)cache.delete(k);}}
-function disposeTextures(){for(const t of gpuFrames.values()){t.p.dispose();t.c.dispose();}gpuFrames.clear();pairKey='';}
+let worker=null,generation=0,info=null,frames=[],playing=true,orbit=1,current=0,elapsed=0,last=0,lastStats=0,initial=null,ready=false,orbitTime=0,baseAngle=0,dragging=false;
+let gpuSlots=[],pairKey='',loaded=0;
+function resetView(){
+ if(!initial)return;
+ root.rotation.y=0;orbitTime=0;
+ controls.target.set(...initial.center);
+ // Looking towards the geometry from the source-facing side (ST4RTrack +Z was flipped).
+ camera.position.set(initial.center[0],initial.center[1]+initial.span*.04,initial.center[2]+initial.span*1.48);
+ controls.update();baseAngle=controls.getAzimuthalAngle();
+}
+function updateOrbitLabel(){$('orbit').textContent=['Orbit off','Gentle orbit','Full orbit'][orbit];}
+$('reset').onclick=resetView;
+$('orbit').onclick=()=>{orbit=(orbit+1)%3;root.rotation.y=0;orbitTime=0;baseAngle=controls.getAzimuthalAngle();updateOrbitLabel();};
+$('play').onclick=()=>{playing=!playing;last=0;$('play').textContent=playing?'Pause':'Play';};
+$('size').oninput=()=>{if(material)material.uniforms.sizeScale.value=Number($('size').value);};
+$('detail').onchange=()=>{if(!material)return;const n=Number($('detail').value);material.uniforms.samples.value=n;geom.setDrawRange(0,frames[0].n*n);};
+$('scrub').oninput=()=>{if(!ready)return;current=Number($('scrub').value);elapsed=current/info.fps;last=0;};
+function disposeTextures(){for(const t of gpuSlots){t.p.dispose();t.c.dispose();}gpuSlots=[];pairKey='';}
 function makeTexture(data,w,h,type){const t=new THREE.DataTexture(data,w,h,THREE.RGBAFormat,type);t.minFilter=t.magFilter=THREE.NearestFilter;t.generateMipmaps=false;t.needsUpdate=true;return t;}
-function textureFor(f){
- if(gpuFrames.has(f.index))return gpuFrames.get(f.index);
- const w=f.width,ht=f.n/w;if(!Number.isInteger(ht))throw Error('Invalid reconstruction grid');
- const p=new Float32Array(f.n*4),c=new Uint8Array(f.n*4),a=f.index>0?cache.get(f.index-1):null,b=f.index<info.count-1?cache.get(f.index+1):null;
- for(let i=0;i<f.n;i++){const j=i*3,k=i*4,x=f.pos[j],y=f.pos[j+1],z=f.pos[j+2],r=f.rad[i];let sx=x,sy=y,sz=z,total=1;
-  for(let pass=0;pass<2;pass++){const n=pass===0?a:b;if(!n||n.n!==f.n)continue;const dx=n.pos[j]-x,dy=n.pos[j+1]-y,dz=n.pos[j+2]-z,dr=n.rgb[j]-f.rgb[j],dg=n.rgb[j+1]-f.rgb[j+1],db=n.rgb[j+2]-f.rgb[j+2];const limit=Math.min(f.bounds.span*.027,Math.max(f.bounds.span*.011,r*3));
-   if(dx*dx+dy*dy+dz*dz<limit*limit&&dr*dr+dg*dg+db*db<1050){const weight=.38;sx+=weight*n.pos[j];sy+=weight*n.pos[j+1];sz+=weight*n.pos[j+2];total+=weight;}}
-  p[k]=sx/total;p[k+1]=sy/total;p[k+2]=sz/total;p[k+3]=r;c[k]=f.rgb[j];c[k+1]=f.rgb[j+1];c[k+2]=f.rgb[j+2];c[k+3]=255;
- }
- const t={p:makeTexture(p,w,ht,THREE.FloatType),c:makeTexture(c,w,ht,THREE.UnsignedByteType)};gpuFrames.set(f.index,t);return t;
+function slotFor(f,avoid=-1){
+ let slot=gpuSlots.find(x=>x.index===f.index);
+ if(slot)return slot;
+ slot=gpuSlots.find(x=>x.index!==avoid);
+ if(!slot){slot={index:-1,p:makeTexture(f.p,f.width,f.n/f.width,THREE.FloatType),c:makeTexture(f.c,f.width,f.n/f.width,THREE.UnsignedByteType)};gpuSlots.push(slot);}
+ else {slot.p.image.data=f.p;slot.c.image.data=f.c;slot.p.needsUpdate=true;slot.c.needsUpdate=true;}
+ slot.index=f.index;return slot;
 }
 function setFrame(frame,next=frame,fraction=0){
  if(!cloud){
   if(!renderer.capabilities.isWebGL2)throw Error('The fine splat renderer requires WebGL 2.');
-  geom=new THREE.BufferGeometry();geom.setAttribute('position',new THREE.BufferAttribute(new Float32Array(frame.n*4*3),3));
-  material=new THREE.ShaderMaterial({...shader,glslVersion:THREE.GLSL3,uniforms:{pa:{value:null},pb:{value:null},ca:{value:null},cb:{value:null},gridW:{value:frame.width},gridH:{value:frame.n/frame.width},blend:{value:0},span:{value:frame.bounds.span},sizeScale:{value:Number($('size').value)},pixelScale:{value:renderer.domElement.height/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2)))}},transparent:false,alphaToCoverage:true,depthWrite:true,depthTest:true});
+  const samples=Number($('detail').value);
+  geom=new THREE.BufferGeometry();geom.setAttribute('position',new THREE.BufferAttribute(new Float32Array(frame.n*4*3),3));geom.setDrawRange(0,frame.n*samples);
+  material=new THREE.ShaderMaterial({...shader,glslVersion:THREE.GLSL3,uniforms:{pa:{value:null},pb:{value:null},ca:{value:null},cb:{value:null},gridW:{value:frame.width},gridH:{value:frame.n/frame.width},samples:{value:samples},blend:{value:0},span:{value:frame.bounds.span},sizeScale:{value:Number($('size').value)},pixelScale:{value:renderer.domElement.height/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2)))}},transparent:false,alphaToCoverage:true,depthWrite:true,depthTest:true});
   cloud=new THREE.Points(geom,material);cloud.frustumCulled=false;root.add(cloud);initial=frame.bounds;resetView();
  }
  if(frame.n*4!==geom.attributes.position.count||frame.width!==material.uniforms.gridW.value)throw Error('Frame grid changed');
- if(next.n!==frame.n||next.width!==frame.width)next=frame;
  const key=frame.index+':'+next.index;
  if(key!==pairKey){
-  const a=textureFor(frame),b=textureFor(next);const u=material.uniforms;u.pa.value=a.p;u.pb.value=b.p;u.ca.value=a.c;u.cb.value=b.c;u.span.value=initial.span;
-  for(const [i,t] of gpuFrames){if(i!==frame.index&&i!==next.index){t.p.dispose();t.c.dispose();gpuFrames.delete(i);}}
-  pairKey=key;
+  // Preserve a resident next-frame slot whenever possible, and reuse storage instead of allocating every tick.
+  const a=slotFor(frame,next.index),b=next===frame?a:slotFor(next,frame.index);const u=material.uniforms;
+  u.pa.value=a.p;u.pb.value=b.p;u.ca.value=a.c;u.cb.value=b.c;pairKey=key;
  }
- material.uniforms.blend.value=fraction;shown=frame.index;
+ material.uniforms.blend.value=fraction;
 }
-const workerSource=`importScripts('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');let zip,meta,names,queue=[],busy=false;async function pump(){if(busy)return;busy=true;while(queue.length){let i=queue.shift();try{let b=await zip.file(names[i]).async('arraybuffer'),u=new Uint8Array(b),h=new TextDecoder().decode(u.subarray(0,2048)),e=h.indexOf('end_header');if(e<0||!h.includes('binary_little_endian'))throw Error('Expected binary little-endian PLY');let start=e+10;if(u[start]===13)start++;if(u[start]===10)start++;let n=Number(h.match(/element vertex (\\d+)/)[1]);if(!h.includes('property float x\\nproperty float y\\nproperty float z\\nproperty uchar red\\nproperty uchar green\\nproperty uchar blue'))throw Error('Unexpected vertex schema');if(start+n*15!==b.byteLength)throw Error('Unexpected PLY length');let dv=new DataView(b),pos=new Float32Array(n*3),rgb=new Uint8Array(n*3),rad=new Float32Array(n),min=[Infinity,Infinity,Infinity],max=[-Infinity,-Infinity,-Infinity];for(let j=0;j<n;j++){let k=start+j*15,p=j*3;pos[p]=dv.getFloat32(k,true);pos[p+1]=-dv.getFloat32(k+4,true);pos[p+2]=-dv.getFloat32(k+8,true);for(let a=0;a<3;a++){let x=pos[p+a];if(!Number.isFinite(x))throw Error('Non-finite point');min[a]=Math.min(min[a],x);max[a]=Math.max(max[a],x);rgb[p+a]=dv.getUint8(k+12+a);}}let span=Math.max(...max.map((v,a)=>v-min[a])),center=max.map((v,a)=>(v+min[a])/2);let width=Number(meta.image_size)||512;if(!Number.isInteger(width)||width<1||n%width!==0)throw Error('Unsupported point grid width');for(let j=0;j<n;j++){let p=j*3,col=j%width,dx=Infinity,dy=Infinity;function dist(t){let q=t*3,x=pos[p]-pos[q],y=pos[p+1]-pos[q+1],z=pos[p+2]-pos[q+2];return Math.sqrt(x*x+y*y+z*z);}if(col>0)dx=Math.min(dx,dist(j-1));if(col<width-1)dx=Math.min(dx,dist(j+1));if(j>=width)dy=Math.min(dy,dist(j-width));if(j+width<n)dy=Math.min(dy,dist(j+width));let lo=Math.min(dx,dy),hi=Math.max(dx,dy);rad[j]=Math.max(span*.0003,Math.min(span*.016,Math.max(lo,Math.min(hi,lo*2.5))));}postMessage({type:'frame',index:i,n,width,pos,rgb,rad,bounds:{span,center}},[pos.buffer,rgb.buffer,rad.buffer]);}catch(e){postMessage({type:'error',message:String(e),index:i});}}busy=false;}onmessage=async e=>{try{if(e.data.type==='open'){zip=await JSZip.loadAsync(e.data.file);let m=Object.keys(zip.files).find(n=>n.endsWith('sequence.json'));meta=m?JSON.parse(await zip.file(m).async('string')):{};names=Object.keys(zip.files).filter(n=>/\\.ply$/i.test(n)).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));if(!names.length)throw Error('No PLY frames');postMessage({type:'info',count:names.length,fps:Number(meta.fps)||30,source:meta.source||'Local sequence'});}else if(e.data.type==='frame'){queue.push(e.data.index);pump();}}catch(e){postMessage({type:'error',message:String(e)});}};`;
-function open(file){if(!file)return;generation++;if(worker)worker.terminate();disposeTextures();if(cloud){root.remove(cloud);geom.dispose();material.dispose();cloud=null;}root.rotation.y=0;info=null;cache.clear();pending.clear();current=0;shown=-1;elapsed=0;last=0;buffered=false;playing=true;$('play').disabled=true;$('play').textContent='Pause';drop.hidden=false;$('error').textContent='Opening ZIP…';const token=generation;const url=URL.createObjectURL(new Blob([workerSource],{type:'text/javascript'}));worker=new Worker(url);URL.revokeObjectURL(url);worker.onerror=e=>{$('error').textContent='Worker failed: '+e.message;drop.hidden=false;};worker.onmessage=e=>{if(token!==generation)return;const d=e.data;if(d.type==='info'){info=d;$('scrub').max=d.count-1;requestWindow();}else if(d.type==='frame'){pending.delete(d.index);cache.set(d.index,d);if(!cloud&&cache.has(0)&&cache.has(Math.min(1,info.count-1))&&cache.has(Math.min(2,info.count-1))){try{setFrame(cache.get(0),cache.get(Math.min(1,info.count-1)),0);drop.hidden=true;$('play').disabled=false;}catch(e){$('error').textContent=String(e);}}}else{pending.delete(d.index);$('error').textContent=d.message;drop.hidden=false;playing=false;}};worker.postMessage({type:'open',file});}
+const workerSource="importScripts('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');\nfunction decode(b,width,index){\n const u=new Uint8Array(b),h=new TextDecoder().decode(u.subarray(0,2048)),e=h.indexOf('end_header');\n if(e<0||!h.includes('binary_little_endian'))throw Error('Expected binary little-endian PLY');\n let start=e+10;if(u[start]===13)start++;if(u[start]===10)start++;\n const n=Number(h.match(/element vertex (\\d+)/)[1]);\n if(!h.includes('property float x\\nproperty float y\\nproperty float z\\nproperty uchar red\\nproperty uchar green\\nproperty uchar blue')||start+n*15!==b.byteLength||n%width!==0)throw Error('Unexpected PLY layout');\n const dv=new DataView(b),p=new Float32Array(n*4),c=new Uint8Array(n*4),min=[Infinity,Infinity,Infinity],max=[-Infinity,-Infinity,-Infinity];\n for(let j=0;j<n;j++){\n  const k=start+j*15,q=j*4;p[q]=dv.getFloat32(k,true);p[q+1]=-dv.getFloat32(k+4,true);p[q+2]=-dv.getFloat32(k+8,true);\n  for(let a=0;a<3;a++){const x=p[q+a];if(!Number.isFinite(x))throw Error('Non-finite point');if(x<min[a])min[a]=x;if(x>max[a])max[a]=x;c[q+a]=dv.getUint8(k+12+a);}c[q+3]=255;\n }\n const span=Math.max(...max.map((v,a)=>v-min[a])),center=max.map((v,a)=>(v+min[a])/2);\n function dist(j,t){const a=j*4,q=t*4,x=p[a]-p[q],y=p[a+1]-p[q+1],z=p[a+2]-p[q+2];return Math.sqrt(x*x+y*y+z*z);}\n for(let j=0;j<n;j++){const col=j%width;let dx=Infinity,dy=Infinity;if(col>0)dx=dist(j,j-1);if(col<width-1)dx=Math.min(dx,dist(j,j+1));if(j>=width)dy=dist(j,j-width);if(j+width<n)dy=Math.min(dy,dist(j,j+width));const lo=Math.min(dx,dy),hi=Math.max(dx,dy);p[j*4+3]=Math.max(span*.0003,Math.min(span*.012,Math.max(lo,Math.min(hi,lo*2.5))));}\n return {index,n,width,p,c,bounds:{span,center}};\n}\nfunction emit(f,a,b){\n // Filter only small local errors with matching colours; retain abrupt changes and actual motion.\n const p=f.p.slice(),c=f.c;\n for(let k=0;k<p.length;k+=4){const x=p[k],y=p[k+1],z=p[k+2],r=p[k+3];let sx=x,sy=y,sz=z,total=1;\n  for(let pass=0;pass<2;pass++){const n=pass===0?a:b;if(!n||n.n!==f.n)continue;const dx=n.p[k]-x,dy=n.p[k+1]-y,dz=n.p[k+2]-z,dr=n.c[k]-c[k],dg=n.c[k+1]-c[k+1],db=n.c[k+2]-c[k+2];const limit=Math.min(f.bounds.span*.022,Math.max(f.bounds.span*.007,r*2.5));\n   if(dx*dx+dy*dy+dz*dz<limit*limit&&dr*dr+dg*dg+db*db<900){sx+=dx*.0+x*.35+dx*.35;sy+=y*.35+dy*.35;sz+=z*.35+dz*.35;total+=.35;}}\n  p[k]=sx/total;p[k+1]=sy/total;p[k+2]=sz/total;\n }\n const cc=c.slice();postMessage({type:'frame',...f,p,c:cc},[p.buffer,cc.buffer]);\n}\nonmessage=async e=>{try{\n const zip=await JSZip.loadAsync(e.data.file),m=Object.keys(zip.files).find(n=>n.endsWith('sequence.json')),meta=m?JSON.parse(await zip.file(m).async('string')):{};\n const names=Object.keys(zip.files).filter(n=>/\\.ply$/i.test(n)&&!n.startsWith('__MACOSX/')).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));\n if(!names.length)throw Error('No PLY frames');\n const width=Number(meta.image_size)||512; if(!Number.isInteger(width)||width<2)throw Error('Invalid grid width');\n const sample=await zip.file(names[0]).async('arraybuffer'),first=decode(sample,width,0);\n if(first.n*20*names.length>700*1024*1024)throw Error('Sequence exceeds 700 MB decoded memory limit. Use a shorter test clip.');\n postMessage({type:'info',count:names.length,fps:Number(meta.fps)||30,n:first.n});\n let prev=null,cur=first;\n for(let i=1;i<names.length;i++){const next=decode(await zip.file(names[i]).async('arraybuffer'),width,i);if(next.n!==first.n)throw Error('Frame grid changed');emit(cur,prev,next);prev=cur;cur=next;}\n emit(cur,prev,null);postMessage({type:'done'});\n }catch(e){postMessage({type:'error',message:String(e)});}\n};";
+function open(file){
+ if(!file)return;const token=++generation;if(worker)worker.terminate();worker=null;disposeTextures();
+ if(cloud){root.remove(cloud);geom.dispose();material.dispose();cloud=null;geom=null;material=null;}
+ root.rotation.y=0;frames=[];info=null;ready=false;loaded=0;elapsed=0;current=0;last=0;playing=true;orbit=1;updateOrbitLabel();$('play').disabled=true;$('play').textContent='Pause';drop.hidden=false;$('error').textContent='Opening ZIP…';
+ const url=URL.createObjectURL(new Blob([workerSource],{type:'text/javascript'}));worker=new Worker(url);URL.revokeObjectURL(url);
+ worker.onerror=e=>{if(token===generation){$('error').textContent='Worker failed: '+e.message;drop.hidden=false;ready=false;}};
+ worker.onmessage=e=>{
+  if(token!==generation)return;const d=e.data;
+  if(d.type==='info'){info=d;frames=new Array(d.count);$('scrub').max=d.count-1;$('error').textContent='Preparing 0 / '+d.count+' frames…';}
+  else if(d.type==='frame'){frames[d.index]=d;loaded++;$('error').textContent='Preparing '+loaded+' / '+info.count+' frames ('+Math.round(loaded/info.count*100)+'%) — one-time load';}
+  else if(d.type==='done'){worker.terminate();worker=null;try{if(loaded!==info.count)throw Error('Incomplete sequence');setFrame(frames[0],frames[Math.min(1,frames.length-1)],0);ready=true;drop.hidden=true;$('play').disabled=false;last=0;}catch(e){$('error').textContent=String(e);}}
+  else{ready=false;$('error').textContent=d.message;drop.hidden=false;worker.terminate();worker=null;}
+ };
+ worker.postMessage({file});
+}
 $('file').onchange=e=>open(e.target.files[0]);for(const t of ['dragover','drop'])window.addEventListener(t,e=>{e.preventDefault();if(t==='dragover')drop.classList.add('drag');else{drop.classList.remove('drag');open(e.dataTransfer.files[0]);}});window.addEventListener('dragleave',()=>drop.classList.remove('drag'));
-addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);if(material)material.uniforms.pixelScale.value=renderer.domElement.height/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2)));});document.addEventListener('visibilitychange',()=>{last=0;});let dragging=false;controls.addEventListener('start',()=>dragging=true);controls.addEventListener('end',()=>dragging=false);
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);if(material)material.uniforms.pixelScale.value=renderer.domElement.height/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2)));});document.addEventListener('visibilitychange',()=>{last=0;});controls.addEventListener('start',()=>{dragging=true;});controls.addEventListener('end',()=>{dragging=false;orbit=0;updateOrbitLabel();});
 function animate(now){
- requestAnimationFrame(animate);if(document.hidden)return;const dt=last?Math.min((now-last)/1000,.08):0;last=now;
- if(info&&cloud){
-  const nextOf=i=>(i+1)%info.count;
-  if(playing){
-   if(!buffered)buffered=Array.from({length:Math.min(14,info.count)},(_,i)=>cache.has((current+i)%info.count)).every(Boolean);
-   if(buffered){const candidate=(elapsed+dt)%(info.count/info.fps),idx=Math.floor(candidate*info.fps)%info.count;
-    if(cache.has(idx)&&cache.has(nextOf(idx))&&cache.has(nextOf(nextOf(idx)))){elapsed=candidate;current=idx;}else buffered=false;
-   }
-  }
-  if(cache.has(current)){
-   const next=current===info.count-1?current:nextOf(current);
-   if(cache.has(next))setFrame(cache.get(current),cache.get(next),next===current?0:Math.max(0,Math.min(1,elapsed*info.fps-current)));
-  }
-  requestWindow();$('scrub').value=current;if(orbit&&!dragging)root.rotation.y+=dt*.035;
-  if(now-lastStats>300){status.textContent=(current+1)+' / '+info.count+' · '+info.fps.toFixed(2)+' fps source · '+(cloud.geometry.attributes.position.count/4).toLocaleString()+' source points · up to '+cloud.geometry.attributes.position.count.toLocaleString()+' fine samples'+(playing&&!buffered?' · buffering':'');lastStats=now;}
+ requestAnimationFrame(animate);if(document.hidden)return;const dt=last?Math.min((now-last)/1000,.1):0;last=now;
+ if(ready&&cloud){
+  // No decoding, eviction, or buffering once the sequence has started.
+  if(playing)elapsed=(elapsed+dt)%(info.count/info.fps);
+  current=Math.min(info.count-1,Math.floor(elapsed*info.fps));
+  const next=Math.min(info.count-1,current+1);
+  setFrame(frames[current],frames[next],next===current?0:elapsed*info.fps-current);
+  $('scrub').value=current;
+  if(orbit&&!dragging){orbitTime+=dt;root.rotation.y=orbit===1?Math.sin(orbitTime*.20)*.28:orbitTime*.035;}
+  if(now-lastStats>300){status.textContent=(current+1)+' / '+info.count+' · '+info.fps.toFixed(2)+' fps source · '+info.n.toLocaleString()+' points · fully loaded';lastStats=now;}
  }
  controls.update();renderer.render(scene,camera);
 }requestAnimationFrame(animate);

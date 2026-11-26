@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050505">
+<meta name="description" content="LifeAfterLogic — a spatial graffiti study.">
+<title>LifeAfterLogic — Spatial Graffiti Study 001</title>
+<style>
+:root{color-scheme:dark;--bg:#050505;--white:#f1f0eb;--muted:rgba(241,240,235,.48);--radius:min(40vw,540px)}
+*{box-sizing:border-box}
+html,body{width:100%;height:100%;margin:0;overflow:hidden;background:var(--bg);font-family:Arial,Helvetica,sans-serif}
+body{color:var(--white);-webkit-font-smoothing:antialiased}
+#stage{position:fixed;inset:0;overflow:hidden;perspective:1500px;perspective-origin:50% 48%;touch-action:none;cursor:grab;background:radial-gradient(ellipse at 50% 48%,#10110f 0%,#080908 38%,#050505 75%)}
+#stage.dragging{cursor:grabbing}
+#dust{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.85}
+.vignette{position:absolute;inset:0;z-index:5;pointer-events:none;background:radial-gradient(ellipse at center,transparent 30%,rgba(0,0,0,.28) 72%,rgba(0,0,0,.8) 130%)}
+#orbit{position:absolute;left:50%;top:49%;width:0;height:0;transform-style:preserve-3d;will-change:transform}
+.scene{position:absolute;left:0;top:0;width:var(--w);height:var(--h);transform-style:preserve-3d;transform-origin:center center;transform:translate(-50%,-50%) rotateY(var(--angle)) translateZ(var(--radius)) translateY(var(--lift)) rotateZ(var(--tilt));backface-visibility:hidden;will-change:transform;pointer-events:none}
+.scene-frame{position:absolute;inset:0;overflow:hidden;transform-style:preserve-3d;clip-path:polygon(5% 7%,16% 2%,87% 0,98% 12%,100% 80%,91% 96%,72% 100%,8% 94%,0 78%,2% 22%);background:#171917;filter:drop-shadow(0 18px 50px rgba(0,0,0,.6));opacity:.94;transition:opacity .5s,filter .5s}
+.scene-frame:before{content:"";position:absolute;inset:-2px;z-index:2;pointer-events:none;background:linear-gradient(125deg,rgba(255,255,255,.18),transparent 23%,transparent 70%,rgba(255,255,255,.1));mix-blend-mode:screen}
+.scene-frame:after{content:"";position:absolute;inset:-1px;z-index:3;pointer-events:none;background:radial-gradient(ellipse at center,transparent 46%,rgba(0,0,0,.18) 72%,#050505 112%);mix-blend-mode:multiply}
+.scene video{display:block;width:100%;height:100%;object-fit:cover;filter:contrast(1.14) saturate(.82) brightness(.84);transform:scale(1.015)}
+.scene:nth-child(2) video{object-position:50% 50%}
+.scene:nth-child(4) video,.scene:nth-child(6) video{object-position:center 42%}
+.scene-particles{position:absolute;inset:-15%;z-index:4;overflow:visible;pointer-events:none;transform-style:preserve-3d;mask-image:radial-gradient(ellipse at center,#000 32%,rgba(0,0,0,.72) 58%,transparent 82%)}
+.splat{position:absolute;left:var(--x);top:var(--y);width:var(--s);height:var(--s);border-radius:50%;background:hsla(var(--h),88%,78%,var(--a));box-shadow:0 0 7px 1px hsla(var(--h),95%,72%,calc(var(--a)*.5));transform:translate3d(0,0,var(--z));opacity:.8;animation:twinkle var(--t) ease-in-out var(--d) infinite alternate}
+@keyframes twinkle{from{opacity:.12;scale:.7}to{opacity:.85;scale:1.25}}
+.scene-index{position:absolute;z-index:6;left:6%;bottom:7%;display:flex;gap:9px;align-items:center;font-size:9px;line-height:1;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.72);text-shadow:0 1px 12px #000;pointer-events:none}
+.scene-index b{font-weight:500;color:#fff}
+.scene-index i{width:3px;height:3px;border-radius:50%;background:#d9e76a;display:block}
+.scene.is-front .scene-frame{opacity:1;filter:drop-shadow(0 18px 55px rgba(0,0,0,.8)) drop-shadow(0 0 22px rgba(190,210,130,.08))}
+.hud{position:absolute;z-index:10;pointer-events:none;left:clamp(20px,3.3vw,48px);right:clamp(20px,3.3vw,48px);top:clamp(20px,3.2vh,34px);display:flex;justify-content:space-between;align-items:flex-start}
+.brand{font-size:15px;letter-spacing:-.045em;font-weight:500;color:#f3f2ed}
+.brand-meta{margin-top:7px;font-size:8px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+.status{display:flex;align-items:center;gap:8px;font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.55)}
+.status-dot{width:5px;height:5px;border-radius:50%;background:#d8e77a;box-shadow:0 0 9px #d8e77a}
+.footer{position:absolute;z-index:10;left:clamp(20px,3.3vw,48px);right:clamp(20px,3.3vw,48px);bottom:clamp(20px,3.2vh,34px);display:flex;justify-content:space-between;align-items:flex-end;pointer-events:none}
+.instruction{font-size:8px;letter-spacing:.17em;text-transform:uppercase;color:rgba(255,255,255,.52)}
+.instruction span{color:rgba(255,255,255,.88)}
+.credit{font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.25);text-align:right}
+#loading{position:absolute;z-index:8;left:50%;top:50%;transform:translate(-50%,-50%);font-size:8px;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.35);transition:opacity .8s}
+#loading.hidden{opacity:0}
+@media(max-width:700px){
+ :root{--radius:285px}
+ #stage{perspective:1050px;perspective-origin:50% 48%}
+ #orbit{top:50%}
+ .scene{width:var(--mw,270px);height:var(--mh,178px)}
+ .scene[data-shape="portrait"]{width:205px;height:300px}
+ .hud{top:20px;left:18px;right:18px}
+ .brand{font-size:14px}
+ .brand-meta,.status{font-size:7px}
+ .footer{left:18px;right:18px;bottom:20px}
+ .instruction,.credit{font-size:7px}
+}
+@media(prefers-reduced-motion:reduce){.splat{animation:none!important}}
+</style>
+</head>
+<body>
+<main id="stage" aria-label="Interactive rotating collection of graffiti video scenes. Drag to orbit and scroll to zoom.">
+ <canvas id="dust"></canvas>
+ <div id="orbit">
+  <article class="scene is-front" data-angle="0" style="--angle:0deg;--w:430px;--h:270px;--lift:-20px;--tilt:-2deg;--h:56">
+   <div class="scene-frame">
+    <video muted loop playsinline autoplay preload="metadata" poster="https://images.pexels.com/videos/7108924/pexels-photo-7108924.jpeg?auto=compress&dpr=1&h=750&w=1260"><source src="https://videos.pexels.com/video-files/7108924/7108924-uhd_4096_2160_25fps.mp4" type="video/mp4"></video>
+    <div class="scene-particles"></div><div class="scene-index"><b>01</b><i></i>DAYLIGHT / MURAL</div>
+   </div>
+  </article>
+  <article class="scene" data-angle="60" style="--angle:60deg;--w:390px;--h:250px;--lift:48px;--tilt:3deg;--h:78">
+   <div class="scene-frame">
+    <video muted loop playsinline preload="metadata" poster="https://images.pexels.com/videos/7110836/pexels-photo-7110836.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=900"><source src="https://videos.pexels.com/video-files/7110836/7110836-uhd_4096_2160_25fps.mp4" type="video/mp4"></video>
+    <div class="scene-particles"></div><div class="scene-index"><b>02</b><i></i>UNDERPASS / TAG</div>
+   </div>
+  </article>
+  <article class="scene" data-angle="120" style="--angle:120deg;--w:420px;--h:270px;--lift:-56px;--tilt:-3deg;--h:185">
+   <div class="scene-frame">
+    <video muted loop playsinline preload="metadata" poster="https://images.pexels.com/videos/7109795/pexels-photo-7109795.jpeg?auto=compress&dpr=1&h=750&w=1260"><source src="https://videos.pexels.com/video-files/7109795/7109795-uhd_4096_2160_25fps.mp4" type="video/mp4"></video>
+    <div class="scene-particles"></div><div class="scene-index"><b>03</b><i></i>CONCRETE / STUDY</div>
+   </div>
+  </article>
+  <article class="scene" data-angle="180" data-shape="portrait" style="--angle:180deg;--w:270px;--h:410px;--lift:28px;--tilt:2deg;--h:48">
+   <div class="scene-frame">
+    <video muted loop playsinline preload="metadata" poster="https://images.pexels.com/videos/7109796/pexels-photo-7109796.jpeg?auto=compress&dpr=1&h=750&w=1260"><source src="https://videos.pexels.com/video-files/7109796/7109796-uhd_2160_4096_25fps.mp4" type="video/mp4"></video>
+    <div class="scene-particles"></div><div class="scene-index"><b>04</b><i></i>ALLEY / COLOUR</div>
+   </div>
+  </article>
+  <article class="scene" data-angle="240" style="--angle:240deg;--w:400px;--h:250px;--lift:-38px;--tilt:2deg;--h:325">
+   <div class="scene-frame">
+    <video muted loop playsinline preload="metadata" poster="https://images.pexels.com/videos/5621707/pexels-photo-5621707.jpeg?auto=compress&dpr=1&h=750&w=1260"><source src="https://videos.pexels.com/video-files/5621707/5621707-hd_1920_1080_24fps.mp4" type="video/mp4"></video>
+    <div class="scene-particles"></div><div class="scene-index"><b>05</b><i></i>STREET / PROCESS</div>
+   </div>
+  </article>
+  <article class="scene" data-angle="300" style="--angle:300deg;--w:270px;--h:405px;--lift:58px;--tilt:-2deg;--h:18">
+   <div class="scene-frame">
+    <video muted loop playsinline preload="metadata" poster="https://images.pexels.com/videos/7149482/pexels-photo-7149482.jpeg?auto=compress&dpr=1&h=750&w=1260"><source src="https://videos.pexels.com/video-files/7149482/7149482-uhd_2160_4096_25fps.mp4" type="video/mp4"></video>
+    <div class="scene-particles"></div><div class="scene-index"><b>06</b><i></i>AFTER DARK</div>
+   </div>
+  </article>
+ </div>
+ <div id="loading">Spatial study / loading scenes</div>
+ <div class="vignette"></div>
+ <header class="hud">
+  <div><div class="brand">lifeafterlogic</div><div class="brand-meta">Spatial graffiti study / 001</div></div>
+  <div class="status"><span class="status-dot"></span>6 moving scenes</div>
+ </header>
+ <footer class="footer">
+  <div class="instruction"><span>Drag</span> to orbit&nbsp;&nbsp;·&nbsp;&nbsp;<span>Scroll</span> to move closer</div>
+  <div class="credit">Prototype footage / Pexels</div>
+ </footer>
+</main>
+<script>
+(function(){
+ const stage=document.getElementById('stage');
+ const orbit=document.getElementById('orbit');
+ const scenes=Array.from(document.querySelectorAll('.scene'));
+ const videos=scenes.map(s=>s.querySelector('video'));
+ const loading=document.getElementById('loading');
+ let yaw=0,pitch=-5,zoom=1,dragging=false,lastX=0,lastY=0,spinVelocity=0,lastMove=0;
+ const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+ function angleDelta(a){return ((a+180)%360+360)%360-180}
+ function updateVideos(){
+  scenes.forEach((scene,i)=>{
+   const d=Math.abs(angleDelta(Number(scene.dataset.angle)+yaw));
+   const near=d<112;
+   scene.classList.toggle('is-front',d<37);
+   if(document.hidden){videos[i].pause();return}
+   if(near){if(videos[i].paused){const p=videos[i].play();if(p&&p.catch)p.catch(()=>{})}}
+   else if(!videos[i].paused){videos[i].pause()}
+  });
+ }
+ function animate(){
+  if(!dragging){
+   if(Math.abs(spinVelocity)>.001){yaw+=spinVelocity;spinVelocity*=.94}
+   else if(!reduced){yaw+=.035}
+  }
+  orbit.style.transform='translate(-50%,-50%) rotateX('+pitch+'deg) rotateY('+yaw+'deg) scale('+zoom+')';
+  updateVideos();
+  requestAnimationFrame(animate);
+ }
+ stage.addEventListener('pointerdown',e=>{
+  if(e.target.closest('.hud,.footer'))return;
+  dragging=true;lastX=e.clientX;lastY=e.clientY;spinVelocity=0;
+  stage.classList.add('dragging');
+  try{stage.setPointerCapture(e.pointerId)}catch(_){}
+ });
+ stage.addEventListener('pointermove',e=>{
+  if(!dragging)return;
+  const dx=e.clientX-lastX,dy=e.clientY-lastY;
+  yaw+=dx*.22;pitch=clamp(pitch+dy*.15,-34,34);
+  spinVelocity=dx*.025;lastX=e.clientX;lastY=e.clientY;
+ });
+ function endDrag(){if(!dragging)return;dragging=false;stage.classList.remove('dragging')}
+ stage.addEventListener('pointerup',endDrag);
+ stage.addEventListener('pointercancel',endDrag);
+ stage.addEventListener('wheel',e=>{e.preventDefault();zoom=clamp(zoom-e.deltaY*.00055,.68,1.3)},{passive:false});
+ stage.addEventListener('dblclick',()=>{yaw=0;pitch=-5;zoom=1;spinVelocity=0});
+ document.addEventListener('visibilitychange',updateVideos);
+ scenes.forEach((scene,index)=>{
+  const layer=scene.querySelector('.scene-particles');
+  for(let i=0;i<95;i++){
+   const p=document.createElement('span');p.className='splat';
+   const edge=Math.random()>.28;
+   const x=edge?(Math.random()*130-15):(Math.random()*100);
+   const y=edge?(Math.random()*130-15):(Math.random()*100);
+   p.style.setProperty('--x',x+'%');p.style.setProperty('--y',y+'%');
+   p.style.setProperty('--s',(Math.random()*2.7+.5)+'px');
+   p.style.setProperty('--z',(Math.random()*110-55)+'px');
+   p.style.setProperty('--a',(Math.random()*.45+.12).toFixed(2));
+   p.style.setProperty('--t',(2.2+Math.random()*5)+'s');
+   p.style.setProperty('--d',(-Math.random()*6)+'s');
+   const hue=[54,76,185,330,28,0][index];
+   p.style.setProperty('--h',hue+(Math.random()*24-12));
+   layer.appendChild(p);
+  }
+ });
+ const canvas=document.getElementById('dust'),ctx=canvas.getContext('2d');
+ let dust=[];
+ function resize(){
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  canvas.width=Math.floor(innerWidth*dpr);canvas.height=Math.floor(innerHeight*dpr);
+  canvas.style.width=innerWidth+'px';canvas.style.height=innerHeight+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  dust=Array.from({length:Math.min(360,Math.floor(innerWidth*innerHeight/4300))},()=>({x:Math.random()*innerWidth,y:Math.random()*innerHeight,r:Math.random()*1.15+.25,a:Math.random()*.42+.08,vx:(Math.random()-.5)*.13,vy:(Math.random()-.5)*.13,h:[48,62,180,0][Math.floor(Math.random()*4)]}));
+ }
+ function drawDust(){
+  ctx.clearRect(0,0,innerWidth,innerHeight);
+  for(const p of dust){
+   p.x+=p.vx;p.y+=p.vy;
+   if(p.x<0)p.x=innerWidth;if(p.x>innerWidth)p.x=0;
+   if(p.y<0)p.y=innerHeight;if(p.y>innerHeight)p.y=0;
+   ctx.beginPath();ctx.fillStyle='hsla('+p.h+',70%,78%,'+p.a+')';ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();
+  }
+  requestAnimationFrame(drawDust);
+ }
+ window.addEventListener('resize',resize,{passive:true});
+ resize();drawDust();animate();
+ setTimeout(()=>loading.classList.add('hidden'),1800);
+})();
+</script>
+</body>
+</html>

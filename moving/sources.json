@@ -1,0 +1,32 @@
+{
+  "note": "Candidate footage only; inspect actual playback and verify rights before publication.",
+  "clips": [
+    {
+      "id": "7108924",
+      "title": "Graffiti artist daylight",
+      "url": "https://www.pexels.com/video/graffiti-artist-spray-painting-on-wall-7108924/",
+      "duration_seconds": 16
+    },
+    {
+      "id": "7109796",
+      "title": "Urban underpass",
+      "url": "https://www.pexels.com/video/graffiti-artist-spray-painting-on-wall-7109796/",
+      "duration_seconds": 18
+    },
+    {
+      "id": "7110836",
+      "title": "Hooded artist",
+      "url": "https://www.pexels.com/video/a-man-doing-graffiti-art-on-a-wall-7110836/"
+    },
+    {
+      "id": "7149475",
+      "title": "Night-time tagging",
+      "url": "https://www.pexels.com/video/a-man-spray-painting-a-wall-7149475/"
+    },
+    {
+      "id": "5561757",
+      "title": "Two artists",
+      "url": "https://www.pexels.com/video/man-and-a-woman-vandalizing-the-wall-5561757/"
+    }
+  ]
+}

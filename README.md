@@ -2,6 +2,10 @@
 
 LifeAfterLogic's first browser experiment for a rotating collection of spatial graffiti scenes.
 
+## Visual reference
+
+The target visual language is based on the user-supplied 4D Gaussian-splat videos and the original creator reference, [@baaak3 on Instagram](https://www.instagram.com/baaak3/). The Instagram page could not be fetched directly in this session; the attached MP4s were inspected as the primary visual reference.
+
 ## Current build
 
 The page now renders **real Gaussian splat captures** through the Luma Web SDK and Three.js. The captures are loaded as 3D scene objects in one shared world — they are not video textures, image cards, or CSS panels.

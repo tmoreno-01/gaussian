@@ -135,14 +135,14 @@ function addCapture(item, index) {
   const splat = new LumaSplatsThree({
     source: "https://lumalabs.ai/capture/" + item.id,
     loadingAnimationEnabled: false,
-    particleRevealEnabled: false
+    particleRevealEnabled: false,
+    enableThreeShaderIntegration: false
   });
-  holder.add(splat);
-
   splat.onLoad = () => {
     loaded++;
     setProgress();
   };
+  holder.add(splat);
   splat.onError = (err) => {
     console.error("Could not load splat:", item.title, err);
     errorBox.style.display = "block";

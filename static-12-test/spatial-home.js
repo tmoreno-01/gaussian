@@ -33,8 +33,8 @@
   const sixOnly = new URLSearchParams(location.search).get("count") === "6" || extras.length===0;
   const captures = originalCaptures;
   const countLabel = document.getElementById("capture-count");
-  if(countLabel)countLabel.textContent = "Loading 9 unique captures…";
-  const localSlots = [{"id":"92d261b7","name":"Skatepark bowl","author":"dragonheart000","url":"https://superspl.at/scene/92d261b7","licensed":true},{"id":"f0137e7f","name":"Freeman Alley","author":"matousekfoto","url":"https://superspl.at/scene/f0137e7f","licensed":true},{"id":"b3a9bb2b","name":"Dilapidated Parking Lot","author":"bneg","url":"https://superspl.at/scene/b3a9bb2b","licensed":true}];
+  if(countLabel)countLabel.textContent = "Loading 7 unique captures…";
+  const localSlots = [{"id":"f0137e7f","name":"Freeman Alley","author":"matousekfoto","url":"https://superspl.at/scene/f0137e7f","licensed":true}];
   // A new spatial composition, not just a shuffled ring. Each model is
   // assigned a fresh size role independently of identity on every reload.
   const random=()=>Math.random(),between=(a,b)=>a+(b-a)*random();
@@ -42,7 +42,7 @@
   const modes=["broken orbit","dense cluster","wide constellation","layered islands"];
   const mode=modes[Math.floor(random()*modes.length)],phase=between(0,Math.PI*2),orbitSpeed=.035;
   const layoutTilt=0;
-  const roles=Array.from({length:targetCount},(_,i)=>i<3?between(1.95,2.65):i<7?between(1.40,1.85):between(1.05,1.35));
+  const roles=Array.from({length:targetCount},(_,i)=>i<2?between(1.95,2.65):i<5?between(1.40,1.85):between(1.05,1.35));
   const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
   shuffle(roles);
   const order=shuffle(Array.from({length:targetCount},(_,i)=>i));
@@ -204,7 +204,7 @@
             const mesh=makeGaussian(THREE,data), holder=new THREE.Group(),old=localMeshes.get(i);
             if(old){orbit.remove(old.holder);old.mesh.dispose();usedFiles.delete(old.key);state.splats=state.splats.filter(x=>x!==old.mesh);}
             const poseIndex=old?.poseIndex??(captures.length+localMeshes.size),pose=poses[poseIndex];holder.position.set(pose.x,pose.y,pose.z);holder.rotation.set(pose.pitch,pose.yaw,pose.roll);// The long, narrow arch reads smaller than other models at equal bounding-box size.
-            const captureScale=item.id==="92d261b7"?Math.max(1.5,pose.scale*1.13):pose.scale;
+            const captureScale=pose.scale;
             holder.scale.setScalar(captureScale);
             holder.add(mesh);orbit.add(holder);state.splats.push(mesh);localMeshes.set(i,{mesh,holder,key,poseIndex});usedFiles.add(key);applySolo();
             // Preserve the random camera framing as additional scans arrive.
@@ -217,7 +217,7 @@
       }
     }
     const bulk=document.getElementById("bulk-ply"), bulkStatus=document.getElementById("bulk-status");
-    const aliases=[/skate|92d261b7/i,/freeman|f0137e7f/i,/parking|b3a9bb2b/i];
+    const aliases=[/freeman|f0137e7f/i];
     if(bulk)bulk.onchange=async()=>{
       if(localBusy)return;
       const files=Array.from(bulk.files||[]), unknown=[], matched=new Map(), ambiguous=[];

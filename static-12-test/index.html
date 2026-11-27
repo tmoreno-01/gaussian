@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- SEO metadata: regenerate route snapshots after editing with node scripts/render-routes.mjs. -->
+<meta name="description" content="Independent creative studio exploring design, moving image, interactive experiences, emerging visual technologies and everything in between.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="canonical" href="https://lifeafterlogic.com/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="LifeAfterLogic">
+<meta property="og:locale" content="en_GB">
+<meta property="og:title" content="LifeAfterLogic">
+<meta property="og:description" content="Independent creative studio exploring design, moving image, interactive experiences, emerging visual technologies and everything in between.">
+<meta property="og:url" content="https://lifeafterlogic.com/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="LifeAfterLogic">
+<meta name="twitter:description" content="Independent creative studio exploring design, moving image, interactive experiences, emerging visual technologies and everything in between.">
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","@id":"https://lifeafterlogic.com/#studio","name":"LifeAfterLogic","alternateName":"lifeafterlogic","url":"https://lifeafterlogic.com/","logo":"https://lifeafterlogic.com/favicon.svg","description":"Independent creative studio exploring design, moving image, interactive experiences, emerging visual technologies and everything in between.","email":"hello@lifeafterlogic.com","address":{"@type":"PostalAddress","addressLocality":"Brighton","addressCountry":"GB"},"sameAs":["https://www.instagram.com/lifeafterlogic/"]},{"@type":"WebSite","@id":"https://lifeafterlogic.com/#website","name":"LifeAfterLogic","url":"https://lifeafterlogic.com/","inLanguage":"en-GB","publisher":{"@id":"https://lifeafterlogic.com/#studio"}}]}</script>
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#000000">
+<style>html{background:#000;color-scheme:dark}html[data-theme="light"]{background:#fff;color-scheme:light}html.home-route[data-theme="dark"]{background:#030303}</style>
+<script>
+const initialRoute = location.pathname.replace(/^\/+|\/+$/g, "").toLowerCase() || location.hash.slice(1).toLowerCase();
+const initialHome = !["about","experiments","about.html","experiments.html","experiments/gaussian-splatting","experiments/gaussian-splatting.html"].includes(initialRoute);
+document.documentElement.classList.toggle("home-route", initialHome);
+let initialTheme = null;
+try { initialTheme = localStorage.getItem("lal-12-test-theme"); } catch (_) {}
+document.documentElement.dataset.theme = initialTheme === "light" ? "light" : "dark";
+document.querySelector('meta[name="theme-color"]').content = initialTheme === "light" ? "#ffffff" : initialHome ? "#030303" : "#000000";
+document.documentElement.classList.add("site-loading");
+// Fail open even if a script or remote asset never resolves.
+window.__siteLoaderFailSafe = window.setTimeout(() => document.documentElement.classList.remove("site-loading"), 32000);
+</script>
+<title>LifeAfterLogic — 12 capture composition test</title>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.157.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.157.0/examples/jsm/",
+    "@lumaai/luma-web": "https://unpkg.com/@lumaai/luma-web@0.2.0/dist/library/luma-web.module.js"
+  }
+}
+</script>
+
+<link rel="icon" type="image/svg+xml" href="https://lifeafterlogic.com/favicon.svg">
+<script>
+// Fetch the matching native animation before the page content is parsed.
+(function(){const preload=document.createElement("link");preload.rel="preload";preload.as="image";preload.href=document.documentElement.dataset.theme==="light"?"https://lifeafterlogic.com/loader-logo-light-v5.gif":"https://lifeafterlogic.com/loader-logo-dark-v5.gif";document.head.appendChild(preload);})();
+</script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&amp;display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&amp;display=swap"></noscript>
+<style>
+:root {
+  font-family: "Poppins", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --page-bg: #fff; --page-fg: #000;
+  color: var(--page-fg); background: var(--page-bg); color-scheme: light; font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  --gutter: clamp(18px, 2.45vw, 48px);
+  --tile-gap: clamp(5px, .65vw, 12px);
+}
+:root[data-theme="dark"] { --page-bg: #000; --page-fg: #fff; color-scheme: dark; }
+* { box-sizing: border-box; }
+html { overflow-y: scroll; }
+body { margin: 0; min-height: 100vh; min-height: 100svh; }
+a { color: inherit; text-decoration: none; }
+button { font: inherit; }
+.header {
+  position: sticky; top: 0; z-index: 10; background: var(--page-bg);
+  display: grid; grid-template-columns: 1fr auto; align-items: center;
+  column-gap: 36px; padding: 24px var(--gutter) 27px;
+}
+.identity { display: inline-flex; align-items: center; gap: 12px; justify-self: start; }
+.mark { appearance: none; border: 0; background: transparent; padding: 0; width: 44px; height: 44px; display: grid; place-items: center; color: inherit; cursor: pointer; touch-action: manipulation; }
+.mark svg { display: block; width: 38px; height: 38px; overflow: visible; }
+.wordmark { position: relative; top: var(--baseline-shift, 2px); font-size: 23px; font-weight: 700; letter-spacing: -1.18px; line-height: 1; white-space: nowrap; color: var(--page-fg); -webkit-text-fill-color: var(--page-fg); -webkit-text-stroke: var(--weight-stroke, .016em) var(--page-fg); }
+.wordmark-baseline { display: inline-block; width: 0; height: 0; padding: 0; border: 0; vertical-align: baseline; }
+/* Small typographic trademark, attached to the wordmark throughout its animation. */
+.wordmark::after { -webkit-text-stroke: 0; content: "TM"; position: absolute; left: calc(100% + 1.5px); top: var(--tm-top, 1px); font-family: inherit; font-size: .32em; font-weight: 400; line-height: 1; letter-spacing: 0; white-space: nowrap; }
+.identity { padding-inline-end: 13px; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+nav { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; display: flex; align-items: center; gap: clamp(27px, 3.4vw, 65px); font-size: 16px; letter-spacing: -.35px; font-weight: 400; }
+nav a { display: inline-flex; align-items: center; min-height: 44px; white-space: nowrap; transition: opacity 150ms ease; opacity: .52; }
+nav a:hover, nav a[aria-current="page"] { opacity: 1; }
+nav a[href^="/"] { position: relative; }
+nav a[href^="/"]::after {
+  content: ""; position: absolute; left: 0; right: 0; top: calc(50% + .8em);
+  height: 1px; background: currentColor; pointer-events: none;
+  transform: scaleX(0); transform-origin: center;
+  transition: transform 380ms cubic-bezier(.22, 1, .36, 1);
+}
+nav a[href^="/"][aria-current="page"]::after { transform: scaleX(1); }
+nav .instagram { justify-content: center; width: 28px; min-width: 28px; margin-left: calc(-1 * clamp(8px, 1.6vw, 28px)); }
+nav .instagram svg { display: block; flex-shrink: 0; }
+:focus-visible { outline: 1px solid currentColor; outline-offset: 5px; }
+main { padding: 0 var(--gutter) var(--gutter); }
+section[hidden], nav a[hidden] { display: none; }
+.project-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: var(--tile-gap); }
+.project-tile { position: relative; display: block; aspect-ratio: 16/10; overflow: hidden; }
+.project-tile--wide { grid-column: span 2; aspect-ratio: auto; }
+.project-tile img, .project-tile video { display: block; width: 100%; height: 100%; object-fit: cover; }
+.project-tile .project-caption { position: absolute; inset: auto 0 0; padding: 15px; color: white; background: linear-gradient(transparent,rgba(0,0,0,.45)); opacity: 0; transition: opacity 170ms ease; font-size: 14px; }
+.project-tile:hover .project-caption, .project-tile:focus-visible .project-caption { opacity: 1; }
+.about-line { font-family: "Poppins", "Helvetica Neue", Helvetica, Arial, sans-serif; max-width: 1200px; text-wrap: balance; margin: clamp(45px, 9vw, 145px) 0 0; font-size: clamp(36px, 5.5vw, 82px); font-weight: 400; line-height: 1.05; letter-spacing: -.025em; }
+.studio-intro { max-width: 650px; margin: 24px 0 0; font-size: clamp(15px, 1.3vw, 19px); line-height: 1.65; font-weight: 400; }
+.studio-intro a { text-decoration: underline; text-underline-offset: 3px; }
+.experiment-intro { margin: 32px 0; max-width: 650px; font-size: 16px; line-height: 1.6; }
+.about-contact { margin-top: clamp(28px, 4vw, 54px); }
+.contact-link { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; padding: 0; font-family: inherit; font-size: 17px; font-weight: 400; letter-spacing: -.025em; line-height: 1; }
+.contact-link .contact-label { padding-bottom: 3px; border-bottom: 1px solid currentColor; }
+.contact-link .contact-arrow { width: 13px; height: 13px; flex: none; margin-bottom: 3px; transition: transform 180ms ease; }
+@media (hover: hover) { .contact-link:hover .contact-arrow { transform: translate(2px, -2px); } }
+
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (max-width: 960px) { .project-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (max-width: 600px) {
+  .header { grid-template-columns: 1fr; row-gap: 5px; padding: 13px var(--gutter) 15px; }
+  .identity { gap: 11px; }
+  .mark { width: 40px; height: 40px; }
+  .mark svg { width: 34.2px; height: 34.2px; }
+  .wordmark { font-size: 22px; }
+  nav { justify-content: flex-start; gap: 26px; font-size: 15px; }
+  nav .instagram { margin-left: auto; }
+  .project-grid { grid-template-columns: 1fr; }
+  .project-tile--wide { grid-column: auto; aspect-ratio: 16/10; }
+}
+@media (hover: none) { .project-tile .project-caption { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { *, *::after { transition: none !important; } }
+.theme-toggle { position: fixed; z-index: 20; right: calc(var(--gutter) - 8px); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); width: 44px; height: 44px; display: grid; place-items: center; padding: 0; appearance: none; border: 0; background: transparent; color: var(--page-fg); cursor: pointer; touch-action: manipulation; }
+.theme-toggle svg { display: block; width: 19px; height: 19px; stroke-width: 1.8; pointer-events: none; }
+/* The sun occupies more of its viewBox; size it optically to match Instagram. */
+.theme-toggle .icon-sun { width: 17px; height: 17px; }
+.theme-toggle .icon-sun, :root[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
+:root[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
+@media (hover: hover) { .theme-toggle:hover svg { opacity: .65; } }
+main { padding-bottom: max(var(--gutter), 78px); }
+#site-loader { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 2147483647; display: grid; place-items: center; background: var(--page-bg); color: var(--page-fg); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 160ms ease, visibility 0s linear 160ms; }
+:root.site-loading #site-loader { opacity: 1; visibility: visible; pointer-events: auto; transition: none; }
+#site-loader .loader-image { display: block; width: 76px; height: 76px; object-fit: contain; }
+/* Use real black/white GIF palettes, not a Safari-dependent animated-image filter. */
+#site-loader .loader-image--dark { display: none; }
+:root[data-theme="dark"] #site-loader .loader-image--light { display: none; }
+:root[data-theme="dark"] #site-loader .loader-image--dark { display: block; }
+:root[data-theme="light"] #site-loader { background: #fff; }
+:root[data-theme="dark"] #site-loader { background: var(--page-bg); }
+/* Native animated image: no SVG morph, CSS sprite or per-frame JavaScript. */
+:root:not(.site-loading) #site-loader .loader-image { display: none !important; }
+@media (prefers-reduced-motion: reduce) { #site-loader { transition: none; } }
+/* Staggered project entrance, independent of project media and layout. */
+.project-tile.reveal-pending { opacity: 0; }
+.project-tile.reveal-enter { animation: project-reveal 480ms cubic-bezier(.22,1,.36,1) var(--reveal-delay,0ms) both; }
+.project-tile.reveal-pending:focus-within, .project-tile.reveal-enter:focus-within { opacity: 1; animation: none; }
+@keyframes project-reveal { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .project-tile.reveal-pending, .project-tile.reveal-enter { opacity: 1; animation: none; }
+}
+
+/* Immersive Gaussian-splat homepage: artwork is the background, not a separate panel. */
+:root.home-route { overflow: hidden; }
+:root.home-route[data-theme="dark"] { --page-bg: #030303; --page-fg: #fff; }
+.home-route, .home-route body { width: 100%; height: 100%; overflow: hidden; }
+.home-route body { min-height: 100%; background: var(--page-bg); }
+.home-route .header { position: fixed; inset: 0 0 auto; z-index: 20; background: transparent; color: var(--page-fg); pointer-events: none; }
+.home-route .identity, .home-route nav a { pointer-events: auto; }
+.home-route nav { pointer-events: none; }
+.home-route nav a { opacity: .84; }
+.home-route nav a:hover { opacity: 1; }
+.home-route main { padding: 0; }
+.home-route #home { min-height: 100svh; }
+.home-route .theme-toggle { display: grid; background: transparent; color: var(--page-fg); z-index: 25; }
+.spatial-stage { position: fixed; inset: 0; z-index: 0; overflow: hidden; background: var(--page-bg); isolation: isolate; }
+#spatial-canvas-root { position: absolute; inset: 0; }
+#spatial-canvas-root canvas { display: block; width: 100%; height: 100%; touch-action: none; -webkit-tap-highlight-color: transparent; }
+.spatial-vignette { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+:root[data-theme="dark"] .spatial-vignette { background: radial-gradient(ellipse at center, transparent 34%, rgba(0,0,0,.18) 69%, rgba(0,0,0,.7) 125%); }
+/* The loader animation is a native image, including on mobile Safari. */
+
+/* Research archive / editorial study layout. */
+.experiment-grid { margin-top: 12px; }
+.experiment-tile { position: relative; aspect-ratio: 2 / 1; overflow: hidden; isolation: isolate; background: #080808; color: #fff; }
+.experiment-thumb { position: absolute; inset: 0; overflow: hidden; background: #080808; }
+.experiment-thumb img, .experiment-thumb iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; transition: transform 650ms cubic-bezier(.22,1,.36,1), opacity 350ms ease; }
+.experiment-thumb img { object-fit: cover; opacity: 0; }
+.experiment-thumb img.loaded { opacity: 1; z-index: 1; }
+.experiment-thumb iframe { pointer-events: none; z-index: 1; }
+.experiment-tile::after { content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none; background: linear-gradient(180deg, transparent 42%, rgba(0,0,0,.08) 57%, rgba(0,0,0,.65) 100%); transition: opacity 350ms ease; }
+.experiment-tile-label { position: absolute; z-index: 3; inset: auto 0 0; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: clamp(13px,1.4vw,22px); color: #fff; font-size: clamp(14px,1.15vw,19px); line-height: 1.25; letter-spacing: -.025em; pointer-events: none; transition: transform 350ms cubic-bezier(.22,1,.36,1); }
+.experiment-tile-label span:last-child { font-size: 10px; opacity: .75; white-space: nowrap; letter-spacing: .015em; }
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .experiment-tile:hover .experiment-thumb img.loaded, .experiment-tile:hover .experiment-thumb iframe { transform: scale(1.045); opacity: .83; }
+  .experiment-tile:hover .experiment-tile-label { transform: translateY(-3px); }
+}
+.experiment-tile:focus-visible { outline-offset: 4px; outline-color: var(--page-fg); }
+@media (max-width: 600px) { .experiment-tile { aspect-ratio: 16 / 9; } }
+@media (prefers-reduced-motion: reduce) { .experiment-thumb img, .experiment-thumb iframe, .experiment-tile-label, .experiment-tile::after { transition: none; } }
+.media-placeholder { position: absolute; inset: 0; display: grid; place-items: center; background: #080808; color: #8d8d8d; font: 11px "Helvetica Neue",Arial,sans-serif; letter-spacing: .05em; }
+.study { max-width: 1800px; margin: 0 auto; padding: clamp(22px,4vw,66px) 0 28px; }
+.study-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding-bottom: clamp(26px,4vw,58px); }
+.study-back { display: inline-block; font-size: 12px; opacity: .65; margin-bottom: clamp(18px,3vw,34px); }
+.study-back:hover { opacity: 1; }
+.study-heading h1 { font-size: clamp(52px,8.3vw,142px); font-weight: 400; letter-spacing: -.065em; line-height: .91; margin: 0; }
+.study-meta { display: grid; gap: 6px; font-size: 13px; line-height: 1.3; text-align: right; opacity: .65; white-space: nowrap; padding-bottom: 5px; }
+.study-intro, .study-process { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gutter); border-top: 1px solid color-mix(in srgb,currentColor 19%,transparent); padding: clamp(20px,3vw,36px) 0 clamp(30px,4vw,60px); }
+.study h2 { margin: 0; font-size: clamp(23px,3vw,48px); font-weight: 400; line-height: 1.1; letter-spacing: -.045em; }
+.study-intro p,.study-process p { margin: 0; max-width: 680px; font-size: clamp(14px,1.2vw,18px); line-height: 1.65; }
+.study-hero { position: relative; width: 100%; aspect-ratio: 16/9; background: #030303; overflow: hidden; }
+.study-live, .study-live iframe, .study-hero video { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; object-fit: contain; }
+.study-live[hidden],.study-hero video[hidden] { display: none; }
+.study-media-caption { display: flex; justify-content: space-between; gap: 12px; padding: 13px 0; font-size: 12px; opacity: .75; }
+.study-action:hover, .study-return:hover { text-decoration: underline; text-underline-offset: 4px; }
+.study-gallery-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: clamp(58px,8vw,120px) 0 20px; }
+.study-gallery-heading span { font-size: 11px; opacity: .6; text-align: right; }
+.study-gallery { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--tile-gap); }
+.study-gallery figure { margin: 0; position: relative; aspect-ratio: 16/10; overflow: hidden; background: #080808; }
+.study-gallery figure:nth-child(1),.study-gallery figure:nth-child(6) { grid-column: 1 / -1; aspect-ratio: 16/9; }
+.study-gallery img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .25s ease; }
+.study-gallery img.loaded { opacity: 1; z-index: 1; }
+.study-process { margin-top: clamp(58px,8vw,120px); }
+.study-process p + p { margin-top: 16px; }
+.study-credits { display: grid; gap: 6px; font-size: 12px; opacity: .68; padding: 20px 0 60px; border-top: 1px solid color-mix(in srgb,currentColor 19%,transparent); }
+.study-credits a { text-decoration: underline; text-underline-offset: 3px; }
+.study-return { display: flex; justify-content: space-between; border-top: 1px solid color-mix(in srgb,currentColor 19%,transparent); padding-top: 20px; font-size: clamp(20px,2.5vw,34px); letter-spacing: -.04em; }
+@media (max-width: 600px) { .study-heading { align-items: flex-start; } .study-meta { font-size: 10px; } .study-intro,.study-process { grid-template-columns: 1fr; gap: 18px; } .study-gallery-heading span { font-size: 10px; } .study-hero { aspect-ratio: 4/3; } }
+
+</style>
+<style>
+.test-switch{position:fixed;bottom:var(--gutter);left:var(--gutter);z-index:12;display:flex;gap:12px;align-items:center;font:11px/1.4 Arial,sans-serif;color:var(--page-fg);opacity:.65}
+.test-switch a{border-bottom:1px solid transparent}.test-switch a:hover,.test-switch a[aria-current]{border-color:currentColor;opacity:1}
+html.site-loading .test-switch{visibility:hidden}
+</style></head>
+<body>
+<div id="site-loader" aria-hidden="true"><img class="loader-image loader-image--light" src="https://lifeafterlogic.com/loader-logo-light-v5.gif" width="76" height="76" alt="" decoding="sync" fetchpriority="high"><img class="loader-image loader-image--dark" src="https://lifeafterlogic.com/loader-logo-dark-v5.gif" width="76" height="76" alt="" decoding="sync" fetchpriority="high"></div>
+<header class="header">
+  <a class="identity" href="./" aria-label="lifeafterlogic home">
+    <span class="mark" aria-hidden="true">
+      <svg id="symbol" viewBox="-4 -4 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+        <defs><mask id="cut" maskUnits="userSpaceOnUse" maskContentUnits="userSpaceOnUse" x="-4" y="-4" width="120" height="120" style="mask-type:luminance">
+          <rect x="-4" y="-4" width="120" height="120" fill="#fff"/>
+          <path id="cut-path" fill="#000" d="M32 -1L48 -1L48 32L80 32L80 64L113 64L113 80L32 80Z"/>
+        </mask></defs>
+        <rect id="open-shape" x="0" y="0" width="112" height="112" fill="currentColor" mask="url(#cut)"/>
+        <path id="close-shape" fill="currentColor" fill-rule="nonzero" visibility="hidden"/>
+      </svg>
+    </span>
+    <span class="wordmark">lifeafterlogic<span class="wordmark-baseline" aria-hidden="true"></span></span>
+  </a>
+  <nav aria-label="Main navigation">
+    <a href="/work" id="work-nav" hidden>Work</a>
+    <a href="https://lifeafterlogic.com/experiments">Experiments</a>
+    <a href="https://lifeafterlogic.com/about">About</a>
+    <a class="instagram" href="https://www.instagram.com/lifeafterlogic/" target="_blank" rel="noopener noreferrer" aria-label="lifeafterlogic on Instagram (opens in a new tab)">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+        <rect x="3" y="3" width="18" height="18" rx="5"/>
+        <circle cx="12" cy="12" r="4"/>
+        <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/>
+      </svg>
+    </a>
+  </nav>
+</header>
+<main>
+  <section id="home" aria-labelledby="home-heading">
+    <h1 class="visually-hidden" id="home-heading">LifeAfterLogic — a creative studio for things that don't exist yet</h1>
+    <div class="spatial-stage" id="spatial-stage" aria-label="Interactive 3D Gaussian-splat graffiti scenes">
+      <div id="spatial-canvas-root"></div>
+      <div class="spatial-vignette" aria-hidden="true"></div>
+      <!-- Composition test: six original captures by @Volt_Edge, plus six repeated placeholder instances unless override capture URLs are supplied. -->
+      <div id="spatial-error" class="visually-hidden" role="status" hidden></div>
+    </div>
+  </section>
+</main>
+<button type="button" id="theme-toggle" class="theme-toggle" aria-label="Switch to dark mode" title="Switch to dark mode">
+<svg aria-hidden="true" focusable="false" class="icon-sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+                <svg aria-hidden="true" focusable="false" class="icon-moon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+</button>
+<script>
+(function () {
+  const root = document.documentElement;
+  const button = document.getElementById("theme-toggle");
+  function apply(dark) {
+    root.dataset.theme = dark ? "dark" : "light";
+    document.querySelector('meta[name="theme-color"]').content = dark ? (root.classList.contains("home-route") ? "#030303" : "#000000") : "#ffffff";
+    const label = dark ? "Switch to light mode" : "Switch to dark mode";
+    button.setAttribute("aria-label", label);
+    button.title = label;
+  }
+  let preference = null;
+  try { preference = localStorage.getItem("lal-12-test-theme"); } catch (_) {}
+  if (preference !== "dark" && preference !== "light") preference = null;
+  function syncTheme() {
+    apply(preference !== "light");
+    window.dispatchEvent(new Event("lifeafterlogic:theme-change"));
+  }
+  syncTheme();
+  window.addEventListener("lifeafterlogic:route-change", syncTheme);
+  button.addEventListener("click", () => {
+    preference = root.dataset.theme === "dark" ? "light" : "dark";
+    try { localStorage.setItem("lal-12-test-theme", preference); } catch (_) {}
+    syncTheme();
+  });
+})();
+</script>
+<script>
+(() => {
+  'use strict';
+  const root = document.documentElement;
+  // Original supplied SVG motion 01 (expansion) and 02 (closure).
+  // Sampled from its 120 fps vector keyframes, preserving both distinct trajectories.
+  // Rows: source frame, box inset, cut left, cut top, inner left, inner bottom, cut right.
+  const opening = [
+    [19,32,56,32,56,56,80],[25,31.882,55.911,31.882,55.911,56.089,80.118],
+    [31,31.458,55.593,31.458,55.593,56.407,80.542],[37,30.618,54.963,30.615,55.012,56.988,81.385],
+    [43,29.19,53.892,29.172,54.18,57.82,82.828],[49,26.919,52.189,26.869,52.994,59.006,85.131],
+    [55,23.534,49.65,23.425,51.381,60.619,88.575],[61,19.173,46.38,18.969,49.634,62.366,93.031],
+    [67,14.78,43.085,14.438,48.56,63.44,97.562],[73,11.147,40.361,10.649,48.33,63.67,101.351],
+    [79,8.349,38.262,7.718,48.36,63.64,104.282],[85,6.21,36.658,5.479,48.368,63.632,106.521],
+    [91,4.564,35.423,3.757,48.332,63.668,108.243],[97,3.289,34.467,2.426,48.275,63.725,109.574],
+    [103,2.302,33.726,1.396,48.212,63.788,110.604],[109,1.543,33.157,.606,48.153,63.847,111.394],
+    [115,.97,32.728,.01,48.102,63.898,111.99],[121,.552,32.414,-.426,48.061,63.939,112.426],
+    [127,.264,32.198,-.726,48.03,63.97,112.726],[133,.087,32.066,-.909,48.01,63.99,112.909],
+    [139,.008,32.006,-.992,48.001,63.999,112.992],[142,0,32,-1,48,64,113]
+  ];
+  // Rows: frame, inset, left elbow x, left arm extent, right elbow x,
+  // right arm lower y, right inner x, right inner y. Endpoints are matched exactly.
+  const closing = [
+    [207,0,32,111.777978,48,63.666137,80,32],[213,0,32.033,110.996,48.011,63.2,80,32.065],
+    [219,0,32.263,109.31,48.086,62.672,80,32.515],[225,0,32.757,106.528,48.247,62.115,80,33.484],
+    [231,0,33.591,102.293,48.52,61.44,80,35.117],[237,.009,34.875,96.034,48.939,60.454,79.993,37.632],
+    [243,.183,36.782,86.814,49.562,58.804,79.863,41.37],[249,.626,39.592,73.546,50.479,56.91,79.531,46.874],
+    [255,1.417,43.676,59.576,51.813,58.851,78.937,54.875],[261,2.678,48.899,53.93,53.518,66.163,77.992,65.108],
+    [267,4.607,53.32,54.224,54.962,73.837,76.545,73.769],[273,7.563,55.65,55.65,55.722,78.334,74.328,78.334],
+    [279,12.199,56.454,56.454,55.985,79.911,70.851,79.911],[285,19.117,56.5,56.5,56,80,65.662,80],
+    [291,25.811,56.5,56.5,56,80,60.642,80],[297,29.573,56.5,56.5,56,80,57.82,80],
+    [303,31.319,56.5,56.5,56,80,56.511,80],[309,31.95,56.5,56.5,56,80,56.037,80],
+    [312,32,56.5,56.5,56,80,56,80]
+  ];
+  const identity = document.querySelector('.identity');
+  const cut = document.getElementById('cut-path');
+  const openShape = document.getElementById('open-shape');
+  const closeShape = document.getElementById('close-shape');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  const hover = matchMedia('(any-hover: hover)');
+  const clamp = (n,a,b) => Math.min(b,Math.max(a,n));
+  function sample(rows, progress) {
+    const t = rows[0][0] + clamp(progress,0,1)*(rows[rows.length-1][0]-rows[0][0]);
+    let i = 1;
+    while (i < rows.length-1 && rows[i][0] < t) i++;
+    const a=rows[i-1], b=rows[i], f=(t-a[0])/(b[0]-a[0]);
+    return a.slice(1).map((v,j)=>v+(b[j+1]-v)*f);
+  }
+  const path = points => 'M'+points.map(p=>p.join(',')).join('L')+'Z';
+  const wordmark = document.querySelector('.wordmark');
+  const baselineProbe = wordmark.querySelector('.wordmark-baseline');
+  const symbol = document.getElementById('symbol');
+  function alignWordmark() {
+    const svg = symbol.getBoundingClientRect();
+    const text = wordmark.getBoundingClientRect();
+    const baselineOffset = baselineProbe.getBoundingClientRect().top - text.top;
+    // Closed square extends from y=32 to y=80 in the -4..116 SVG viewBox.
+    // Align the typographic baseline to its lower edge, not the line-box center.
+    // The descender of g naturally falls below this common baseline.
+    const squareBottom = svg.top + svg.height * (84 / 120);
+    const unshiftedTop = svg.top + (svg.height - text.height) / 2;
+    const shift = squareBottom - unshiftedTop - baselineOffset;
+    wordmark.style.setProperty('--baseline-shift', shift.toFixed(4) + 'px');
+    // Match the top of the small TM lettering to the top of the actual wordmark ink.
+    const size = parseFloat(getComputedStyle(wordmark).fontSize);
+    const family = getComputedStyle(wordmark).fontFamily;
+    const context = document.createElement('canvas').getContext('2d');
+    if (context) {
+      context.font = '700 ' + size + 'px ' + family;
+      const main = context.measureText('lifeafterlogic');
+      context.font = '400 ' + (size * .32) + 'px ' + family;
+      const tm = context.measureText('TM');
+      if (Number.isFinite(main.actualBoundingBoxAscent) && Number.isFinite(tm.fontBoundingBoxAscent) && Number.isFinite(tm.fontBoundingBoxDescent) && Number.isFinite(tm.actualBoundingBoxAscent)) {
+        const tmBaseline = (size * .32 + tm.fontBoundingBoxAscent - tm.fontBoundingBoxDescent) / 2;
+        const top = baselineOffset - main.actualBoundingBoxAscent - (tmBaseline - tm.actualBoundingBoxAscent);
+        wordmark.style.setProperty('--tm-top', top.toFixed(4) + 'px');
+      }
+    }
+  }
+  alignWordmark();
+  if (document.fonts) {
+    document.fonts.ready.then(alignWordmark);
+    document.fonts.addEventListener('loadingdone', alignWordmark);
+  }
+  window.addEventListener('resize', alignWordmark, {passive:true});
+  // Both logo instances use the same complete opening and closing motion.
+  function drawSymbol(p, openShape, cut, closeShape) {
+    if (p <= 1) {
+      const [inset,a,b,c,d,e]=sample(opening,p);
+      const size=112-2*inset;
+      openShape.setAttribute('x',inset); openShape.setAttribute('y',inset);
+      openShape.setAttribute('width',size); openShape.setAttribute('height',size);
+      cut.setAttribute('d',path([[a,b],[c,b],[c,a],[112-a,a],[112-a,d],[e,d],[e,112-a],[a,112-a]]));
+      openShape.setAttribute('visibility','visible');
+      closeShape.setAttribute('visibility','hidden');
+    } else {
+      const [x,l,r,u,v,w,z]=sample(closing,p-1), e=112-x, y=80-x;
+      closeShape.setAttribute('d',path([[x,x],[l,x],[l,y],[r,y],[r,e],[x,e]])+' '+path([[u,x],[e,x],[e,v],[w,v],[w,z],[u,z]]));
+      closeShape.setAttribute('visibility','visible');
+      openShape.setAttribute('visibility','hidden');
+    }
+  }
+  function draw(p) {
+    // Follow both the internal folding motion and the outer square contraction.
+    // The fold begins before the outer edge moves, so inset alone lags the logo.
+    const frame = p <= 1 ? sample(opening,p) : sample(closing,p-1);
+    const insetProgress = clamp(frame[0]/32,0,1);
+    const foldProgress = p <= 1
+      ? clamp((frame[1]-32)/24,0,1)
+      : clamp((frame[1]-32)/24.5,0,1);
+    const contraction = .65*foldProgress + .35*insetProgress;
+    // Animate thickness with the same foreground colour as the glyphs.
+    // Never paint the background colour onto the letters.
+    wordmark.style.setProperty('--weight-stroke',(.016*(1-contraction)).toFixed(6)+'em');
+    drawSymbol(p, openShape, cut, closeShape);
+  }
+  let position=1, target=1, raf=0, last=0, over=false, focused=false;
+  let touchMode=false, touchClosed=false, touchPress=false;
+  const coarse = matchMedia('(pointer: coarse)');
+  function tick(time) {
+    const dt=last ? Math.min(50,time-last) : 16.667;
+    last=time;
+    const duration=position>1 || target>1 ? 875 : 1025;
+    const delta=dt/duration;
+    position+=clamp(target-position,-delta,delta);
+    draw(position);
+    if (Math.abs(target-position)>0.000001) raf=requestAnimationFrame(tick);
+    else { position=target; draw(position); raf=0; last=0; }
+  }
+  function sync() {
+    // Touch uses a persistent toggle, not synthetic mouse hover or focus.
+    const want=touchMode?touchClosed:over||focused;
+    if(want) {
+      target=position<1?0:2;
+    } else {
+      if(position>=2) position=0;
+      target=1;
+    }
+    // Explicit taps play the animation; automatic hover respects reduced motion.
+    if(reduced.matches && !touchMode) { if(raf) cancelAnimationFrame(raf); raf=0;last=0;position=target;draw(position); }
+    else if(!raf && position!==target) raf=requestAnimationFrame(tick);
+  }
+  identity.addEventListener('pointerdown',e=>{
+    touchPress=e.pointerType==='touch'||e.pointerType==='pen';
+    if(touchPress){over=focused=false;}
+  });
+  identity.addEventListener('touchstart',()=>{touchPress=true;over=focused=false;},{passive:true});
+  identity.addEventListener('pointercancel',()=>{touchPress=false;});
+  identity.addEventListener('touchcancel',()=>{touchPress=false;});
+  identity.addEventListener('click',e=>{
+    if(e.button!==0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const isTouch=touchPress||e.pointerType==='touch'||e.pointerType==='pen'||e.sourceCapabilities?.firesTouchEvents||(e.detail>0 && !hover.matches && coarse.matches);
+    touchPress=false;
+    if(!isTouch) return;
+    if(!touchMode) touchClosed=false;
+    touchMode=true;
+    over=focused=false;
+    touchClosed=!touchClosed;
+    sync();
+    // The existing route handler still navigates to the homepage.
+  });
+  identity.addEventListener('pointerenter',e=>{
+    if(e.pointerType==='mouse' && hover.matches){touchMode=false;touchClosed=false;over=true;sync();}
+  });
+  identity.addEventListener('pointerleave',e=>{
+    if(e.pointerType==='mouse' && !touchMode){over=false;sync();}
+  });
+  identity.addEventListener('focus',()=>{
+    if(!touchPress && !touchMode && identity.matches(':focus-visible')){focused=true;sync();}
+  });
+  identity.addEventListener('blur',()=>{focused=false;if(!touchMode)sync();});
+  window.addEventListener('blur',()=>{over=focused=false;if(!touchMode)sync();});
+  if(reduced.addEventListener) reduced.addEventListener('change',sync);
+  else if(reduced.addListener) reduced.addListener(sync);
+  draw(1);
+
+  let timer=0;
+  function finish(){clearTimeout(timer);clearTimeout(window.__siteLoaderFailSafe);const delay=Math.max(0,2500-performance.now());setTimeout(()=>root.classList.remove('site-loading'),delay);}
+  window.addEventListener('lifeafterlogic:spatial-ready',finish);
+  window.addEventListener('lifeafterlogic:spatial-loading',()=>{clearTimeout(timer);timer=setTimeout(finish,30000);});
+  identity.addEventListener('click',e=>e.preventDefault());
+  timer=setTimeout(finish,30000);
+})();
+</script>
+<script type="module" src="./spatial-home.js"></script>
+
+<aside class="test-switch" aria-label="Composition comparison"><a href="?count=6">6 captures</a><a href="?count=12">12 captures</a></aside><script>document.querySelector('.test-switch a[href="?count='+(new URLSearchParams(location.search).get('count')==='6'?'6':'12')+'"]').setAttribute('aria-current','true');</script></body>
+</html>

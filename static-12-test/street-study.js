@@ -480,8 +480,8 @@
         splat.setShaderHooks({vertexShaderHooks: {
           getSplatColor: `(vec4 color, vec3 position, uint layers) {
             if ((layers & 2u) == 0u) {
-              float radius = length(position * vec3(1.0, 1.25, 1.0));
-              color.a *= 1.0 - smoothstep(0.72, 1.0, radius);
+              float radius = length(position * vec3(1.0, 1.35, 1.0));
+              color.a *= 1.0 - smoothstep(2.8, 4.0, radius);
             }
             return color;
           }`

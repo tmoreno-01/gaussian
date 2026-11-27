@@ -1,0 +1,68 @@
+name: Prepare graffiti test captures
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/prepare-graffiti-test.yml'
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Fetch pinned open-source conversion tools
+        run: |
+          git clone --quiet https://github.com/buildoak/tortuise.git /tmp/splat-tools
+          git -C /tmp/splat-tools checkout --quiet d114fff4882cd18e9723907fd0b7d63f3e226033
+          python -m pip install numpy Pillow
+      - name: Prepare only publicly downloadable CC BY captures
+        run: |
+          mkdir -p prepared
+          for id in de67a02f 77ec8209 92d261b7 0da683d4; do
+            if timeout 120 bash /tmp/splat-tools/scripts/supersplat-dl.sh "$id" "/tmp/$id.ply"; then
+              python static-12-test/prepare-preview.py "/tmp/$id.ply" "prepared/$id.ply" || echo "Conversion rejected $id"
+            else
+              echo "::warning::Public viewer asset unavailable or unsupported for $id"
+            fi
+            rm -f "/tmp/$id.ply"
+          done
+          ls -lh prepared
+          test -n "$(find prepared -name '*.ply' -print -quit)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: graffiti-preview-assets
+          path: prepared/*.ply
+          retention-days: 1
+  publish:
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/download-artifact@v4
+        with:
+          name: graffiti-preview-assets
+          path: prepared
+      - name: Commit prepared previews to test folder only
+        run: |
+          mkdir -p static-12-test/models
+          for id in de67a02f 77ec8209 92d261b7 0da683d4; do
+            if [ -f "prepared/$id.ply" ]; then
+              test "$(stat -c%s "prepared/$id.ply")" -lt 20000000
+              cp "prepared/$id.ply" "static-12-test/models/$id.ply"
+            fi
+          done
+          git add static-12-test/models/*.ply
+          git diff --cached --quiet && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Add available unique graffiti preview models to test only"
+          git push origin main

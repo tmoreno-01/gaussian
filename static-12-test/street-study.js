@@ -23,7 +23,7 @@
     { id: "cda9d556-cf29-4f2d-b402-b971e1a08773", scale: 0.54 },
     { id: "184d8b07-f374-4831-a6df-8e747e7ffc48", scale: 0.44 },
     { id: "cf77b996-5ec4-48fc-b1d6-7aa620dd163c", scale: 0.39 },
-    { id: "398fd53f-aa2d-4850-831f-a9ef8676a8b5", scale: 0.48 }
+    { id: "398fd53f-aa2d-4850-831f-a9ef8676a8b5", scale: 0.096 }
   ];
 
   // Never fill missing slots with duplicate captures.
@@ -471,12 +471,14 @@
         enableThreeShaderIntegration: false
       });
       if (item.id === "398fd53f-aa2d-4850-831f-a9ef8676a8b5") {
-        // Padded bounds of the statue and pedestal in the decoded capture's local coordinates.
-        // Unlabelled splats inside this volume also belong to the residual silhouette.
+        // Keep the two adjoining painted facades, measured in native scan coordinates.
+        // The roadway, parked vehicles and statue lie outside this narrow surface band.
         splat.setShaderHooks({vertexShaderHooks:{getSplatColor:`(vec4 color, vec3 center, uint semantics) {
-          if (all(greaterThanEqual(center, vec3(-1.55,-1.38,-1.40))) &&
-              all(lessThanEqual(center, vec3(1.22,1.98,1.38)))) return vec4(0.0);
-          return color;
+          float offsetX = center.x - 0.9;
+          float wallDepth = -3.8 - 0.94 * abs(offsetX);
+          bool facade = abs(offsetX) < 5.0 && abs(center.z - wallDepth) < 0.87
+                     && center.y > -6.0 && center.y < 1.6;
+          return facade ? color : vec4(0.0);
         }`}});
       }
       setCaptureFilter(splat,item.id);

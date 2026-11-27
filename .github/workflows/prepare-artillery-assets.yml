@@ -53,7 +53,7 @@ jobs:
             (cd "source-artillery/public/scene/${CHUNK}" && zip -q -r "$ARCHIVE" .)
             (
               cd "$DEST"
-              npm --prefix "$GITHUB_WORKSPACE/spark-source" run build-lod -- "artillery-${CHUNK}.sog" --quality --max-sh=3 --rad-chunked
+              cargo run --manifest-path "$GITHUB_WORKSPACE/spark-source/rust/build-lod/Cargo.toml" --release -- "$ARCHIVE" --quality --max-sh=3 --rad-chunked
             )
             rm "$ARCHIVE"
           done

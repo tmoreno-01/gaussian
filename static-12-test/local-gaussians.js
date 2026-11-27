@@ -1,7 +1,7 @@
 // Standard 3DGS PLY preview loader for the existing Three r157 renderer.
 // Uses anisotropic Gaussian covariance, DC colour, alpha and depth sorting.
 // Local files only; no service or paid storage. Not a full SH renderer.
-export async function readPly(file,limit=300000,cleanup=true){
+export async function readPly(file,limit=300000,cleanup=true,coreOnly=false){
  const prefix=new Uint8Array(await file.slice(0,262144).arrayBuffer());
  const txt=new TextDecoder().decode(prefix),m=/end_header\r?\n/.exec(txt);
  if(!m||!/^ply\r?\n/.test(txt))throw Error('Not a PLY file');
@@ -37,15 +37,17 @@ export async function readPly(file,limit=300000,cleanup=true){
  // Trim broad background ellipsoids and remote low-density samples. Leave
  // dense surface detail alone; avoid per-frame processing.
  const result={pos,scales,rots,colors,opacity,count,center:coreCenter,span,coreSpan,sourceCount:n,removed:0};
- if(!cleanup)return result;
+ if(!cleanup && !coreOnly)return result;
  const maxScale=coreSpan*.18,outer=lo.map((x,i)=>Math.max((hi[i]-x)*.24,coreSpan*.20));
  const clean={pos:[],scales:[],rots:[],colors:[],opacity:[]};
  for(let i=0;i<count;i++){
   const j=i*3,k=i*4,big=Math.max(scales[j],scales[j+1],scales[j+2]);
+  if(coreOnly && (big>coreSpan*.008 || [0,1,2].some(a=>pos[j+a]-3*big<coreLo[a] || pos[j+a]+3*big>coreHi[a])))continue;
   if(big>maxScale||[0,1,2].some(a=>pos[j+a]<lo[a]-outer[a]||pos[j+a]>hi[a]+outer[a])||(opacity[i]<.06&&big>coreSpan*.035))continue;
   clean.pos.push(pos[j],pos[j+1],pos[j+2]);clean.scales.push(scales[j],scales[j+1],scales[j+2]);clean.rots.push(rots[k],rots[k+1],rots[k+2],rots[k+3]);clean.colors.push(colors[j],colors[j+1],colors[j+2]);clean.opacity.push(opacity[i]);
  }
- if(clean.opacity.length<count*.55)return result;
+ if(coreOnly && !clean.opacity.length)throw Error("No passage surface survived the crop");
+ if(!coreOnly && clean.opacity.length<count*.55)return result;
  return {...result,...clean,count:clean.opacity.length,removed:count-clean.opacity.length};
 }
 export function makeGaussian(THREE,data,orientation="x-flip",splatSize=1,opacityBoost=1){

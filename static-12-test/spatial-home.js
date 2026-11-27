@@ -323,6 +323,7 @@
           const localUrl=new URL("./models/"+id+".ply",location.href);
           localUrl.searchParams.set("rev",revision.slice(0,8));
           const urls=[
+            "https://lifeafterlogic.com/media/freeman-alley.ply",
             localUrl.href,
             "https://cdn.jsdelivr.net/gh/tmoreno-01/gaussian@"+revision+"/static-12-test/models/"+id+".ply?rev="+revision.slice(0,8),
             "https://raw.githubusercontent.com/tmoreno-01/gaussian/"+revision+"/static-12-test/models/"+id+".ply?rev="+revision.slice(0,8)

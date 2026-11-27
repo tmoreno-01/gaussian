@@ -34,6 +34,7 @@
   const captures = sixOnly ? originalCaptures : [...originalCaptures,...extras];
   const countLabel = document.getElementById("capture-count");
   if(countLabel)countLabel.textContent = captures.length + " unique captures · " + (captures.length===12?"complete":"additional scans pending");
+  const localSlots = [{"id":"de67a02f","name":"Leake Street tunnel","author":"artfletch","url":"https://superspl.at/scene/de67a02f"},{"id":"77ec8209","name":"Nexels Graffiti","author":"transkatgirl","url":"https://superspl.at/scene/77ec8209"},{"id":"92d261b7","name":"Skatepark bowl","author":"dragonheart000","url":"https://superspl.at/scene/92d261b7"},{"id":"0da683d4","name":"Stone arch bridge","author":"ethan3111","url":"https://superspl.at/scene/0da683d4"}];
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   let active = null;
   let loading = false;
@@ -140,6 +141,50 @@
       loadingTimeout: 0, resize: null, visibility: null, theme: null
     };
     active = state;
+    const localMeshes = new Map(), usedFiles = new Set();
+    let localBusy = false;
+    const localList = document.getElementById("local-captures");
+    function countLocal() {
+      if(countLabel) countLabel.textContent = (captures.length+localMeshes.size) + " distinct capture slots · " + localMeshes.size + " local files loaded";
+    }
+    if(localList){
+      localList.replaceChildren();
+      for(let i=0;i<6;i++){
+        const item=localSlots[i], row=document.createElement("div");row.className="capture-row";
+        const name=document.createElement(item?"a":"span");name.textContent=item?item.name:"Additional unique scan "+(i-3);
+        if(item){name.href=item.url;name.target="_blank";name.rel="noopener noreferrer";name.title=item.author+" — source";}
+        const input=document.createElement("input");input.type="file";input.accept=".ply";input.setAttribute("aria-label","Select "+name.textContent+" PLY");
+        const msg=document.createElement("small");msg.textContent=item?"Choose downloaded standard PLY":"Use a cleared, different graffiti capture";
+        const flip=document.createElement("button");flip.type="button";flip.textContent="Flip";flip.disabled=true;
+        flip.onclick=()=>{const mesh=localMeshes.get(i)?.mesh;if(mesh){mesh.rotation.x+=Math.PI;needsRender=true;}};
+        const yaw=document.createElement("button");yaw.type="button";yaw.textContent="Turn 90°";yaw.disabled=true;
+        yaw.onclick=()=>{const mesh=localMeshes.get(i)?.mesh;if(mesh){mesh.rotation.y+=Math.PI/2;needsRender=true;}};
+        input.onchange=async()=>{
+          const file=input.files?.[0];if(!file)return;
+          if(localBusy){msg.textContent="Finish the current import first";input.value="";return;}
+          const key=file.name+":"+file.size;
+          if(usedFiles.has(key)&&localMeshes.get(i)?.key!==key){msg.textContent="This file is already in the composition";input.value="";return;}
+          if(captures.length+localMeshes.size>=12&&!localMeshes.has(i)){msg.textContent="12 capture limit reached";return;}
+          localBusy=true;input.disabled=true;msg.textContent="Reading Gaussian PLY…";
+          try{
+            const {readPly,makeGaussian}=await import("./local-gaussians.js");
+            const data=await readPly(file,touchDevice?140000:320000);
+            if(state.disposed)return;
+            const mesh=makeGaussian(THREE,data), holder=new THREE.Group(),old=localMeshes.get(i);
+            if(old){orbit.remove(old.holder);old.mesh.dispose();usedFiles.delete(old.key);state.splats=state.splats.filter(x=>x!==old.mesh);}
+            const angle=(i+.5)/6*Math.PI*2;
+            holder.position.set(Math.sin(angle)*[5.85,6.1,5.6,6.25,5.8,6.05][i],[1.18,.92,1.42,1.05,1.25,.84][i],Math.cos(angle)*[5.85,6.1,5.6,6.25,5.8,6.05][i]);
+            holder.rotation.y=angle+Math.PI;holder.rotation.z=(i%2?1:-1)*.045;holder.scale.setScalar([.98,1.08,.83,.98,.95,.91][i]);
+            holder.add(mesh);orbit.add(holder);state.splats.push(mesh);localMeshes.set(i,{mesh,holder,key});usedFiles.add(key);
+            if(localMeshes.size===1&&!old){camera.position.set(2.65,2.2,12.1);controls.maxDistance=24;controls.update();}
+            mesh.updateForCamera(camera,renderer,performance.now());needsRender=true;countLocal();flip.disabled=yaw.disabled=false;
+            msg.textContent=data.count.toLocaleString()+" / "+data.sourceCount.toLocaleString()+" Gaussians";
+          }catch(err){msg.textContent=err.message||String(err);}finally{localBusy=false;input.disabled=false;input.value="";}
+        };
+        row.append(name,input,flip,yaw,msg);localList.append(row);
+      }
+    }
+    countLocal();
 
     let nextIndex = 0;
     let inFlight = 0;
@@ -362,6 +407,7 @@
       if (moving) orbit.rotation.y += delta * .035;
       needsRender = false;
       controls.update();
+      for(const {mesh} of localMeshes.values()) mesh.updateForCamera(camera,renderer,now);
       renderer.render(scene, camera);
       submitFrame();
       renderedFrames++;

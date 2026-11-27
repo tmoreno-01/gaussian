@@ -63,9 +63,9 @@
   }
   const poses=Array.from({length:targetCount},(_,i)=>makePose(i));
   function captureScale(id,role){
-    // Keep the lamp-post capture varied, with its surrounding context restored.
+    // Smaller accent with a compact piece of the surrounding wall.
     if(id==="9c6e8bac-3b79-4f39-a605-58999d33c33c"){
-      return random()<.30?between(2.4,3.5):Math.min(2.35,role*between(.68,1.02));
+      return random()<.18?between(1.85,2.35):Math.min(1.85,role*between(.55,.80));
     }
     // The alley's narrow geometry needs a substantial footprint.
     if(id==="f0137e7f")return Math.min(6.2,Math.max(3.1,role*between(1.28,1.62)));
@@ -83,12 +83,12 @@
     const aspectFactor=Math.max(1,.66/aspect),vertical=Math.tan(43*Math.PI/360);
     const samples=[...originalCaptures,...localSlots].map((item,i)=>{
       const lamp=item.id==="9c6e8bac-3b79-4f39-a605-58999d33c33c",alley=item.id==="f0137e7f";
-      return {pose:poses[i],scale:assignedScales.get(item.id),w:lamp?1.45:alley?2.65:1.95,h:lamp?2.05:alley?1.55:1.35,lamp};
+      return {pose:poses[i],scale:assignedScales.get(item.id),w:lamp?1.12:alley?2.65:1.95,h:lamp?1.65:alley?1.55:1.35,lamp};
     });
     const candidates=[],start=between(0,Math.PI*2);
     for(let i=0;i<24;i++){
       const angle=start+i*Math.PI*2/24;
-      for(const distance of [8.8,9.6,10.4,11.2].map(x=>x*aspectFactor)){
+      for(const distance of [9.2,10,10.8,11.6,12.4].map(x=>x*aspectFactor)){
         const cx=Math.sin(angle)*distance,cz=Math.cos(angle)*distance,cy=distance*.30;
         const l=Math.hypot(distance,cy),sin=Math.sin(angle),cos=Math.cos(angle);
         const rects=[];let penalty=0;
@@ -114,7 +114,7 @@
           if(Math.abs(x)>.85||Math.abs(y)>.83){edgeTotal++;if(hit)edgeFilled++;}
         }
         const coverage=filled/240,central=centerFilled/centerTotal,edge=edgeFilled/edgeTotal;
-        const score=central*1.35-Math.abs(coverage-.78)*1.8-Math.max(0,edge-.72)*.55-penalty-.025*Math.abs(distance/aspectFactor-9.6);
+        const score=central*1.20-Math.abs(coverage-.71)*2.35-Math.max(0,edge-.56)*.90-penalty-.018*Math.abs(distance/aspectFactor-10.4);
         candidates.push({angle,distance,score,coverage,central});
       }
     }
@@ -232,6 +232,34 @@
     const localMeshes = new Map(), usedFiles = new Set(), lumaHolders=new Map();let originalLoaded=0,solo=new URLSearchParams(location.search).get("solo");
     if(![...captures,...localSlots].some(x=>x.id===solo))solo=null;
     const cleanupEnabled=new URLSearchParams(location.search).get('cleanup')!=='off';
+    const lampId="9c6e8bac-3b79-4f39-a605-58999d33c33c";
+    const cropParam=new URLSearchParams(location.search).get("lampCrop");
+    const lampCrop={value:cropParam!==null&&Number.isFinite(Number(cropParam))&&cropParam.trim()!==""?Math.max(.25,Math.min(4,Number(cropParam))):1.0};
+    function setCaptureFilter(splat,id){
+      if(!cleanupEnabled)return;
+      const foreground=LumaSplatsSemantics?.FOREGROUND;
+      if(id!==lampId){if(foreground!==undefined)splat.semanticsMask=foreground;return;}
+      if(cropParam==="off")return;
+      // Keep the full semantic foreground, plus nearby background. Softly
+      // suppress the surrounding scan in object space, independent of pose.
+      try{
+        if(typeof splat.setShaderHooks!=="function")throw Error("Shader hooks unavailable");
+        splat.setShaderHooks({vertexShaderHooks:{
+          additionalUniforms:{lampCropRadius:["float",lampCrop]},
+          getSplatColor:`(vec4 rgba, vec3 position, uint layersBitmask) {
+            if ((layersBitmask & 2u) != 0u) return rgba;
+            float distanceFromCore = length(position * vec3(0.88, 1.15, 1.0));
+            float keep = 1.0 - smoothstep(lampCropRadius * 0.76, lampCropRadius * 1.24, distanceFromCore);
+            return vec4(rgba.rgb, rgba.a * keep);
+          }`
+        }});
+        if(foreground!==undefined&&LumaSplatsSemantics?.BACKGROUND!==undefined)
+          splat.semanticsMask=foreground|LumaSplatsSemantics.BACKGROUND;
+      }catch(e){
+        console.warn("Lamp-post background crop unavailable",e);
+        if(foreground!==undefined)splat.semanticsMask=foreground;
+      }
+    }
     function applySolo(){for(const [id,holder] of lumaHolders)holder.visible=solo===null||solo===id;for(const [i,entry] of localMeshes)entry.holder.visible=solo===null||solo===localSlots[i].id;needsRender=true;}
     function soloButton(id){const b=document.createElement('button');b.type='button';b.textContent='Solo';b.onclick=()=>{solo=solo===id?null:id;applySolo();};return b;}
     let localBusy = false;
@@ -244,7 +272,14 @@
       localList.replaceChildren();
       const all=document.createElement("button");all.type="button";all.textContent="Show all captures";all.onclick=()=>{solo=null;applySolo();};localList.append(all);
       const names=["Faraday Street / Bentoghoul","Stevenson Place / July","Faraday Street / June","Graffiti Palace / Lamp post","Faraday Street / April","STIK Door / Brick Lane"];
-      originalCaptures.forEach((item,i)=>{const row=document.createElement("div");row.className="capture-row";const a=document.createElement("a");a.href="https://lumalabs.ai/capture/"+item.id;a.textContent=names[i]+" · Luma";a.target="_blank";a.rel="noopener";const btn=soloButton(item.id);row.append(a,btn);localList.append(row);});
+      originalCaptures.forEach((item,i)=>{const row=document.createElement("div");row.className="capture-row";const a=document.createElement("a");a.href="https://lumalabs.ai/capture/"+item.id;a.textContent=names[i]+" · Luma";a.target="_blank";a.rel="noopener";const btn=soloButton(item.id);row.append(a,btn);
+        if(item.id===lampId&&cleanupEnabled&&cropParam!=="off"){
+          const label=document.createElement("label");label.textContent="Wall crop ";
+          const range=document.createElement("input");range.type="range";range.min=".25";range.max="4";range.step=".05";range.value=String(lampCrop.value);range.setAttribute("aria-label","Lamp-post surrounding geometry radius");
+          range.oninput=()=>{lampCrop.value=Number(range.value);needsRender=true;};
+          label.append(range);row.append(label);
+        }
+        localList.append(row);});
       for(let i=0;i<localSlots.length;i++){
         const item=localSlots[i], row=document.createElement("div");row.className="capture-row";
         const name=document.createElement(item?"a":"span");name.textContent=item?item.name:"Additional unique scan "+(i-3);
@@ -464,7 +499,7 @@
         particleRevealEnabled: false,
         enableThreeShaderIntegration: false
       });
-      if(cleanupEnabled&&item.id!=="9c6e8bac-3b79-4f39-a605-58999d33c33c"&&LumaSplatsSemantics?.FOREGROUND!==undefined)splat.semanticsMask=LumaSplatsSemantics.FOREGROUND;
+      setCaptureFilter(splat,item.id);
       state.splats.push(splat);
       let settled = false;
       const settle = error => {
@@ -472,7 +507,7 @@
         settled = true;
         finishCapture(error);
       };
-      splat.onLoad = () => {if(cleanupEnabled&&item.id!=="9c6e8bac-3b79-4f39-a605-58999d33c33c"&&LumaSplatsSemantics?.FOREGROUND!==undefined)splat.semanticsMask=LumaSplatsSemantics.FOREGROUND;settle(null);};
+      splat.onLoad = () => {if(cleanupEnabled&&item.id!==lampId&&LumaSplatsSemantics?.FOREGROUND!==undefined)splat.semanticsMask=LumaSplatsSemantics.FOREGROUND;settle(null);};
       splat.onError = error => {
         console.warn("Gaussian capture failed to load", item.id, error);
         settle(error || new Error("Capture failed"));

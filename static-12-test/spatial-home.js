@@ -34,7 +34,9 @@
   const captures = originalCaptures;
   const countLabel = document.getElementById("capture-count");
   if(countLabel)countLabel.textContent = "Loading graffiti captures…";
-  const localSlots = [{"id":"f0137e7f","name":"Freeman Alley","author":"matousekfoto","url":"https://superspl.at/scene/f0137e7f","licensed":true},{"id":"f4897475","name":"Artillery Passage","author":"David Fletcher","url":"https://superspl.at/scene/f4897475","licensed":true,"fullDetail":true,"orientation":"z-flip"},{"id":"suvilahti-skatepark","name":"Suvilahti DIY — cropped skatepark","author":"flyAR","url":"https://flyar.fi/work/suvilahti-diy-project-eternal","localOnly":true,"fullDetail":true,"orientation":"none"}];
+  const touchDevice = matchMedia("(any-pointer: coarse)").matches;
+  const allLocalSlots = [{"id":"f0137e7f","name":"Freeman Alley","author":"matousekfoto","url":"https://superspl.at/scene/f0137e7f","licensed":true},{"id":"f4897475","name":"Artillery Passage","author":"David Fletcher","url":"https://superspl.at/scene/f4897475","licensed":true,"fullDetail":true,"orientation":"z-flip"},{"id":"suvilahti-skatepark","name":"Suvilahti DIY — cropped skatepark","author":"flyAR","url":"https://flyar.fi/work/suvilahti-diy-project-eternal","localOnly":true,"fullDetail":true,"orientation":"none"}];
+  const localSlots = touchDevice ? allLocalSlots.filter(item => !item.fullDetail) : allLocalSlots;
   // A new spatial composition, not just a shuffled ring. Each model is
   // assigned a fresh size role independently of identity on every reload.
   const random=()=>Math.random(),between=(a,b)=>a+(b-a)*random();
@@ -69,7 +71,7 @@
     }
     // The alley's narrow geometry needs a substantial footprint.
     if(id==="f0137e7f")return Math.min(6.2,Math.max(3.1,role*between(1.28,1.62)));
-    if(id==="suvilahti-skatepark")return Math.min(4.6,Math.max(3.6,role*1.55));
+    if(id==="suvilahti-skatepark")return .8*Math.min(4.6,Math.max(3.6,role*1.55));
     if(id==="f4897475")return Math.min(6.2,Math.max(4.4,role*1.85));
     return Math.min(5.35,role*between(.96,1.20));
   }
@@ -171,7 +173,7 @@
       import("@lumaai/luma-web")
     ]);
     let sparkModule=null;
-    try{sparkModule=await import("@sparkjsdev/spark");}
+    try{if (!touchDevice) sparkModule=await import("@sparkjsdev/spark");}
     catch(error){console.warn("Spark high-detail renderer unavailable; keeping streamed Luma captures active.",error);}
     if (token !== generation || !isHomeVisible()) return;
 
@@ -192,7 +194,6 @@
       alpha: false,
       powerPreference: "high-performance"
     });
-    const touchDevice = matchMedia("(pointer: coarse)").matches;
     // Start at a useful resolution, then tune to the actual device under load.
     let quality = touchDevice ? .85 : 1;
     const minQuality = touchDevice ? .52 : .58;
@@ -368,7 +369,7 @@
       const files=Array.from(bulk.files||[]), unknown=[], matched=new Map(), ambiguous=[];
       for(const file of files){
         const hits=aliases.map((r,i)=>r.test(file.name)?i:-1).filter(i=>i>=0);
-        if(hits.length!==1){unknown.push(file.name);continue;}
+        if(hits.length!==1 || hits[0]>=localSlots.length){unknown.push(file.name);continue;}
         const i=hits[0];if(matched.has(i)){ambiguous.push(i);continue;}matched.set(i,file);
       }
       for(const i of ambiguous)matched.delete(i);
@@ -423,7 +424,6 @@
             localMeshes.set(i,{mesh:normalize,holder,key:"artillery-full-rad-v1",poseIndex,sparkMeshes:meshes});
             usedFiles.add("artillery-full-rad-v1");applySolo();countLocal();updateProgress();
             if(messages[i])messages[i].textContent="5M-source scan · streamed detail · CC BY 4.0";
-            flip.disabled=yaw.disabled=false;
           }catch(error){
             orbit.remove(holder);meshes.forEach(mesh=>{try{mesh.dispose();}catch(_){}});
             state.splats=state.splats.filter(mesh=>!meshes.includes(mesh));
@@ -447,7 +447,7 @@
           let blob=null;const fetchErrors=[];
           for(const url of urls){
             try{
-              const response=await fetch(url,{cache:"no-store",credentials:"omit",mode:"cors",signal:AbortSignal.timeout(45000)});
+              const response=await fetch(url,{cache:"default",credentials:"omit",mode:"cors",signal:AbortSignal.timeout(45000)});
               if(!response.ok){fetchErrors.push(new URL(url).hostname+" returned HTTP "+response.status);continue;}
               const type=response.headers.get("content-type")||"";
               if(type.includes("text/html")){fetchErrors.push(new URL(url).hostname+" returned HTML instead of a PLY");continue;}

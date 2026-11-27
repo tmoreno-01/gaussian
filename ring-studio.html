@@ -162,8 +162,8 @@ async function ensureFrameReady(s,i){
 }
 async function renderMp4Loop(){
  const active=visible();
- if(!active.length)throw new Error('Load at least one valid 4D ZIP first.');
- if(!('VideoEncoder' in window))throw new Error('This browser does not support WebCodecs MP4 export. Use the latest desktop Chrome or Edge.');
+ if(!active.length){$('exportStatus').textContent='Load at least one valid 4D ZIP first.';return;}
+ if(!('VideoEncoder' in window)){$('exportStatus').textContent='MP4 export needs a browser with WebCodecs. Use the latest desktop Chrome or Edge.';return;}
  const [width,height]=$('exportSize').value.split('x').map(Number),duration=Number($('exportDuration').value),fps=30,total=Math.round(duration*fps);
  const size=new THREE.Vector2();renderer.getSize(size);
  const oldPixelRatio=renderer.getPixelRatio(),oldAspect=camera.aspect,oldPosition=camera.position.clone(),oldTarget=controls.target.clone(),oldRotation=world.rotation.y,oldLayout=$('layout').value;
@@ -184,7 +184,9 @@ async function renderMp4Loop(){
   videoSource=new CanvasSource(recordCanvas,{codec,quality:new Quality({bitrate:14_000_000}),latencyMode:'quality',keyFrameInterval:2});
   output.addVideoTrack(videoSource);await output.start();
   renderer.setPixelRatio(1);renderer.setSize(width,height,false);
-  camera.aspect=width/height;camera.updateProjectionMatrix();$('layout').value='ring';layout(true);world.rotation.y=0;
+  camera.aspect=width/height;camera.updateProjectionMatrix();
+  for(const sceneState of active)await ensureFrameReady(sceneState,0);
+  $('layout').value='ring';layout(true);world.rotation.y=0;
   for(let frame=0;frame<total;frame++){
    const timestamp=frame/fps,angle=(frame/total)*Math.PI*2;
    await Promise.all(active.map(s=>ensureFrameReady(s,Math.floor(timestamp*s.m.fps)%s.m.num_frames)));
@@ -209,8 +211,8 @@ async function renderMp4Loop(){
  }finally{
   if(videoSource){try{videoSource.close();}catch(_){}}
   exporting=false;renderer.setPixelRatio(oldPixelRatio);renderer.setSize(size.x,size.y,false);
-  camera.aspect=oldAspect;camera.updateProjectionMatrix();camera.position.copy(oldPosition);controls.target.copy(oldTarget);
-  controls.enabled=oldControls;controls.enableDamping=oldDamping;controls.update();world.rotation.y=oldRotation;$('layout').value=oldLayout;
+  camera.aspect=oldAspect;camera.updateProjectionMatrix();camera.position.copy(oldPosition);controls.target.copy(oldTarget);$('layout').value=oldLayout;layout(false);
+  controls.enabled=oldControls;controls.enableDamping=oldDamping;controls.update();world.rotation.y=oldRotation;
   playing=oldPlaying;orbit=oldOrbit;$('orbit').textContent=orbit?'Spin on':'Spin off';last=0;
   $('startExport').disabled=false;$('closeExport').disabled=false;renderer.render(scene,camera);
  }

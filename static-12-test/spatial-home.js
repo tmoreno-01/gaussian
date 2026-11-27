@@ -244,7 +244,7 @@
     const sparkRenderer = SparkRenderer ? new SparkRenderer({
       renderer,
       pagedExtSplats: true,
-      lodSplatScale: touchDevice ? .95 : 1.30,
+      lodSplatScale: touchDevice ? .68 : 1.30,
       minSortIntervalMs: 100,
       onDirty: () => {
         if(state.disposed)return;
@@ -328,8 +328,10 @@
                 lod:"quality",extSplats:true,
                 onProgress:event=>{if(event.lengthComputable)msg.textContent="Decoding original scan · "+Math.round(event.loaded/event.total*100)+"%";}
               });
-              mesh.lodScale=touchDevice?.90:1.25;
+              mesh.lodScale=touchDevice?.70:1.25;
+              mesh.maxSh=touchDevice?1:3;
               await mesh.initialized;
+              mesh.updateGenerator();
               if(state.disposed){mesh.dispose();return false;}
               removeLocalEntry(i);
               const holder=new THREE.Group(),normalize=new THREE.Group();
@@ -414,8 +416,10 @@
           try{
             for(let j=0;j<5;j++){
               const url="./models/artillery/artillery-0_"+j+"-lod.rad";
-              const mesh=new SplatMesh({url,paged:true,lodScale:touchDevice?.95:1.25});
+              const mesh=new SplatMesh({url,paged:true,lodScale:touchDevice?.70:1.25});
               await mesh.initialized;
+              mesh.maxSh=touchDevice?1:3;
+              mesh.updateGenerator();
               if(state.disposed){mesh.dispose();return;}
               normalize.add(mesh);meshes.push(mesh);state.splats.push(mesh);
               if(messages[i])messages[i].textContent="Artillery Passage · "+(j+1)+"/5 full-detail regions ready";

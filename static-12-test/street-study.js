@@ -11,7 +11,7 @@
   const signal = name => window.dispatchEvent(new Event("lifeafterlogic:" + name));
 
   const originalCaptures = [
-    { id: "3582f3b0-565e-443f-9165-3571c0721fbc", scale: .5208, y: -.14, tilt: -.035 },
+    { id: "3582f3b0-565e-443f-9165-3571c0721fbc", scale: .33852, y: -.14, tilt: -.035 },
     { id: "1a487b86-38a7-466d-856b-5d9ad2f84fab", scale: .64, y: .22, tilt: .045 },
     { id: "b101171b-cf5f-4669-ab44-d9fa39e69898", scale: .4536, y: -.28, tilt: .025 },
     { id: "9c6e8bac-3b79-4f39-a605-58999d33c33c", scale: .72, y: .30, tilt: -.055 },

@@ -48,7 +48,7 @@ export async function readPly(file,limit=300000,cleanup=true){
  if(clean.opacity.length<count*.55)return result;
  return {...result,...clean,count:clean.opacity.length,removed:count-clean.opacity.length};
 }
-export function makeGaussian(THREE,data){
+export function makeGaussian(THREE,data,orientation="x-flip"){
  const {pos,scales,rots,colors,opacity,count,center,span}=data;
  const width=1024,height=Math.ceil(count/width),texels=width*height*4;
  const a=new Float32Array(texels),b=new Float32Array(texels),c=new Float32Array(texels),d=new Float32Array(texels);
@@ -73,7 +73,11 @@ export function makeGaussian(THREE,data){
  'void main(){int i=int(splatIndex);ivec2 uv=ivec2(i%1024,i/1024);vec4 p=texelFetch(centers,uv,0);vec3 s=texelFetch(scales,uv,0).xyz;vec4 q=texelFetch(rotations,uv,0);rgba=vec4(texelFetch(colors,uv,0).rgb,p.w);gaussianUV=position.xy*3.;vec4 v=modelViewMatrix*vec4(p.xyz,1.);if(v.z>-.05){gl_Position=vec4(2.,2.,2.,1.);return;}'+
  'mat3 M=mat3(modelViewMatrix)*quat(q)*mat3(s.x,0.,0.,0.,s.y,0.,0.,0.,s.z);mat3 V=M*transpose(M);float z=-v.z;float fx=projectionMatrix[0][0]*viewport.x*.5,fy=projectionMatrix[1][1]*viewport.y*.5;vec3 jx=vec3(fx/z,0.,fx*v.x/(z*z)),jy=vec3(0.,fy/z,fy*v.y/(z*z));float A=dot(jx,V*jx)+.25,B=dot(jx,V*jy),C=dot(jy,V*jy)+.25;float mid=(A+C)*.5,delta=sqrt(max(0.,(A-C)*(A-C)*.25+B*B));float l1=max(.25,mid+delta),l2=max(.25,mid-delta);vec2 axis=abs(B)>1e-8?normalize(vec2(B,l1-A)):(A>=C?vec2(1.,0.):vec2(0.,1.));vec2 other=vec2(-axis.y,axis.x);vec2 shift=axis*min(384.,3.*sqrt(l1))*position.x+other*min(384.,3.*sqrt(l2))*position.y;gl_Position=projectionMatrix*v;gl_Position.xy+=shift*2./viewport*gl_Position.w;}',
  fragmentShader:'in vec2 gaussianUV; in vec4 rgba; out vec4 outColor; void main(){float r=dot(gaussianUV,gaussianUV);if(r>9.)discard;float a=rgba.a*exp(-.5*r);if(a<.003)discard;outColor=vec4(rgba.rgb,a);}'});
- const mesh=new THREE.Mesh(geo,mat);mesh.frustumCulled=false;mesh.rotation.x=Math.PI; // conventional COLMAP camera coordinates
+ const mesh=new THREE.Mesh(geo,mat);mesh.frustumCulled=false;
+ // Orientation is source-specific: COLMAP-style scans default to X-flip,
+ // Artillery Passage Y-down PLY uses a Z half-turn, Suvilahti is already upright.
+ if(orientation==="z-flip")mesh.rotation.z=Math.PI;
+ else if(orientation!=="none")mesh.rotation.x=Math.PI;
  const bins=512,counts=new Uint32Array(bins),offsets=new Uint32Array(bins),keys=new Uint16Array(count),depths=new Float32Array(count),mv=new THREE.Matrix4();
  let lastSort=-Infinity;
  mesh.updateForCamera=(camera,renderer,now)=>{

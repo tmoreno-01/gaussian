@@ -69,12 +69,14 @@
   const poses=Array.from({length:targetCount},(_,i)=>makePose(i));
   // Keep the lamp closer to the middle of the orbit so the walls pass in front more often.
   const lampPose = poses[originalCaptures.findIndex(item => item.id === "9c6e8bac-3b79-4f39-a605-58999d33c33c")];
-  lampPose.x *= .65;
-  lampPose.z *= .65;
+  const lampRadius = between(.38, .90);
+  lampPose.x *= lampRadius;
+  lampPose.z *= lampRadius;
+  lampPose.y += between(-.32, .32);
   function captureScale(id,role){
     // Small foreground-only lamp-post accent.
     if(id==="9c6e8bac-3b79-4f39-a605-58999d33c33c"){
-      return random()<.18?between(1.85,2.35):Math.min(1.85,role*between(.55,.80));
+      return random()<.18 ? between(1.95,2.55) : between(.95,1.95);
     }
     // The alley's narrow geometry needs a substantial footprint.
     if(id==="f0137e7f")return 1.35*Math.min(6.2,Math.max(3.1,role*between(1.28,1.62)));

@@ -21,7 +21,7 @@
     { id: "a2b66f9e-d157-4037-8e46-9a90062de171", scale: 0.46 },
     { id: "cda9d556-cf29-4f2d-b402-b971e1a08773", scale: 0.189 },
     { id: "184d8b07-f374-4831-a6df-8e747e7ffc48", scale: 0.22 },
-    { id: "cf77b996-5ec4-48fc-b1d6-7aa620dd163c", scale: 0.39 },
+    { id: "cf77b996-5ec4-48fc-b1d6-7aa620dd163c", scale: 0.39, showNearbyWall: true },
 
   ];
 
@@ -301,6 +301,10 @@
     const lampId="9c6e8bac-3b79-4f39-a605-58999d33c33c";
     function setCaptureFilter(splat,item){
       const id = item.id;
+      if (item.showNearbyWall) {
+        splat.semanticsMask = LumaSplatsSemantics.ALL;
+        return;
+      }
       if((cleanupEnabled||id===lampId)&&LumaSplatsSemantics?.FOREGROUND!==undefined)
         splat.semanticsMask=LumaSplatsSemantics.FOREGROUND;
     }
@@ -469,6 +473,20 @@
         particleRevealEnabled: false,
         enableThreeShaderIntegration: false
       });
+      if (item.showNearbyWall) {
+        // Luma toggles skybox visibility when the background layer is enabled.
+        // Exclude the panorama from every camera layer independently.
+        splat.skybox.layers.disableAll();
+        splat.setShaderHooks({vertexShaderHooks: {
+          getSplatColor: `(vec4 color, vec3 position, uint layers) {
+            if ((layers & 2u) == 0u) {
+              float radius = length(position * vec3(1.0, 1.25, 1.0));
+              color.a *= 1.0 - smoothstep(0.72, 1.0, radius);
+            }
+            return color;
+          }`
+        }});
+      }
       setCaptureFilter(splat,item);
       state.splats.push(splat);
       let settled = false;

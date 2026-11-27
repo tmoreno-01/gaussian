@@ -329,7 +329,6 @@
                 onProgress:event=>{if(event.lengthComputable)msg.textContent="Decoding original scan · "+Math.round(event.loaded/event.total*100)+"%";}
               });
               mesh.lodScale=touchDevice?.70:1.25;
-              mesh.objectModifier=bloomFilter;
               mesh.maxSh=touchDevice?1:3;
               await mesh.initialized;
               mesh.updateGenerator();
@@ -425,14 +424,15 @@
                 return [
                   `${g} = ${inputs.gsplat};`,
                   `float extent = max(max(${g}.scales.x, ${g}.scales.y), ${g}.scales.z);`,
-                  `float edge = smoothstep(4.0, 8.0, distance(${g}.center, vec3(-0.388, -0.971, -0.666)));`,
-                  `${g}.rgba.a *= 1.0 - smoothstep(mix(0.55, 0.18, edge), mix(1.25, 0.55, edge), extent);`
+                  `float radius = distance(${g}.center, vec3(-0.388, -0.971, -0.666));`,
+                  `if (radius + 3.0 * extent > 7.5 || extent > mix(0.32, 0.12, smoothstep(3.0, 7.5, radius))) { ${g}.rgba.a = 0.0; }`
                 ];
               }
             });
             for(let j=0;j<5;j++){
               const url="./models/artillery/artillery-0_"+j+"-lod.rad";
               const mesh=new SplatMesh({url,paged:true,lodScale:touchDevice?.70:1.25});
+              mesh.objectModifier=bloomFilter;
               await mesh.initialized;
               mesh.maxSh=touchDevice?1:3;
               mesh.updateGenerator();

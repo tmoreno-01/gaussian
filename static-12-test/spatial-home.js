@@ -11,11 +11,11 @@
   const signal = name => window.dispatchEvent(new Event("lifeafterlogic:" + name));
 
   const originalCaptures = [
-    { id: "3582f3b0-565e-443f-9165-3571c0721fbc", scale: .62, y: -.14, tilt: -.035 },
+    { id: "3582f3b0-565e-443f-9165-3571c0721fbc", scale: .434, y: -.14, tilt: -.035 },
     { id: "1a487b86-38a7-466d-856b-5d9ad2f84fab", scale: .64, y: .22, tilt: .045 },
-    { id: "b101171b-cf5f-4669-ab44-d9fa39e69898", scale: .60, y: -.28, tilt: .025 },
+    { id: "b101171b-cf5f-4669-ab44-d9fa39e69898", scale: .42, y: -.28, tilt: .025 },
     { id: "9c6e8bac-3b79-4f39-a605-58999d33c33c", scale: .72, y: .30, tilt: -.055 },
-    { id: "94f2efd7-f65d-4b7f-b455-536e95643bad", scale: .60, y: -.10, tilt: .035 },
+    { id: "94f2efd7-f65d-4b7f-b455-536e95643bad", scale: .42, y: -.10, tilt: .035 },
     { id: "3adabd81-8ef0-4257-92cb-a2929ef8aa8a", scale: .68, y: .16, tilt: -.025 }
   ];
 

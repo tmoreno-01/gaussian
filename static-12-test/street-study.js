@@ -81,7 +81,10 @@
   }
   const poses=Array.from({length:targetCount},(_,i)=>makePose(i));
   const pipesIndex = originalCaptures.findIndex(item => item.id === "a2b66f9e-d157-4037-8e46-9a90062de171");
-  if (pipesIndex >= 0) poses[pipesIndex].yaw += Math.PI;
+  if (pipesIndex >= 0) {
+    // The shared pose already varies yaw around the inward-facing direction.
+    poses[pipesIndex].yaw += random() < .70 ? Math.PI : between(-Math.PI, Math.PI);
+  }
   // Keep the lamp closer to the middle of the orbit so the walls pass in front more often.
   const lampPose = poses[originalCaptures.findIndex(item => item.id === "9c6e8bac-3b79-4f39-a605-58999d33c33c")];
   const lampRadius = between(.38, .90);

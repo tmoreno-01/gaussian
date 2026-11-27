@@ -71,13 +71,23 @@
   const horizontalStretch = between(.78, 1.28);
   const heightPhase = between(0, Math.PI * 2);
   const heightAmplitude = between(.12, .55);
+  const spread = random() < .35 ? between(1.16, 1.36) : between(.94, 1.10);
+  const gaps = Array.from({length: targetCount}, () => between(.7, 1.5));
+  const totalGap = gaps.reduce((sum, gap) => sum + gap, 0);
+  let nextAngle = phase;
+  const angles = gaps.map(gap => {
+    const angle = nextAngle;
+    nextAngle += 2 * Math.PI * gap / totalGap;
+    return angle;
+  });
   function makePose(i){
-    const k=order[i%targetCount],a=phase+k/targetCount*Math.PI*2+between(-.25,.25);
+    const k=order[i%targetCount],a=angles[k];
     let radius,y,x,z;
     if(mode==="dense cluster"){radius=between(1.6,3.2);y=between(-.46,.46);}
     else if(mode==="wide constellation"){radius=between(2.5,4.4);y=between(-.70,.70);}
     else if(mode==="layered islands"){radius=k%3===0?between(1.4,2.4):between(2.8,4.1);y=between(-.58,.58);}
     else{radius=between(2.4,4.0);y=between(-.42,.42);}
+    radius *= spread * between(.94, 1.08);
     y += Math.sin(a + heightPhase) * heightAmplitude;
     x=Math.sin(a)*radius*horizontalStretch;z=Math.cos(a)*radius/horizontalStretch;
     return {x,y,z,yaw:a+Math.PI+between(-1.18,1.18),pitch:between(-.21,.21),roll:between(-.18,.18),scale:roles[i%targetCount]};

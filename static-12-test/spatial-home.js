@@ -34,22 +34,31 @@
   const captures = originalCaptures;
   const countLabel = document.getElementById("capture-count");
   if(countLabel)countLabel.textContent = captures.length + " unique captures · " + (captures.length===12?"complete":"additional scans pending");
-  const localSlots = [{"id":"de67a02f","name":"Leake Street tunnel","author":"artfletch","url":"https://superspl.at/scene/de67a02f"},{"id":"77ec8209","name":"Nexels Graffiti","author":"transkatgirl","url":"https://superspl.at/scene/77ec8209"},{"id":"92d261b7","name":"Skatepark bowl","author":"dragonheart000","url":"https://superspl.at/scene/92d261b7"},{"id":"0da683d4","name":"Stone arch bridge","author":"ethan3111","url":"https://superspl.at/scene/0da683d4"},{"id":"309265EC-DDEB-4EB2-BA5F-BC329B0258EB","name":"Bayshore Roundhouse","author":"Polycam source · reuse terms unverified","url":"https://poly.cam/explore/capture/309265EC-DDEB-4EB2-BA5F-BC329B0258EB/bayshore%2Broundhouse"},{"id":"ddc7cb49-4350-47e1-aad4-6cee046e3574","name":"Lostplacetest3","author":"Polycam source · reuse terms unverified","url":"https://poly.cam/explore/capture/ddc7cb49-4350-47e1-aad4-6cee046e3574/Lostplacetest3"},{"id":"caaa1fb4","name":"Painted coastal bunker","author":"bernfra","url":"https://superspl.at/scene/caaa1fb4"}];
-  // Each refresh gets a fresh but deliberately bounded composition.
-  const random=()=>Math.random(), between=(a,b)=>a+(b-a)*random();
-  const params=new URLSearchParams(location.search);
-  const modes=["staggered orbit","rising spiral","spatial constellation","tilted orbit"];
-  const mode=modes[Math.floor(random()*modes.length)],phase=between(0,Math.PI*2),orbitSpeed=between(.025,.052)*(random()<.5?-1:1);
-  const layoutTilt=mode==="tilted orbit"?between(-.38,.38):between(-.12,.12);
-  const slotsOrder=Array.from({length:13},(_,i)=>i);
-  for(let i=slotsOrder.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[slotsOrder[i],slotsOrder[j]]=[slotsOrder[j],slotsOrder[i]];}
+  const localSlots = [{"id":"de67a02f","name":"Leake Street tunnel","author":"artfletch","url":"https://superspl.at/scene/de67a02f","licensed":true},{"id":"77ec8209","name":"Nexels Graffiti","author":"transkatgirl","url":"https://superspl.at/scene/77ec8209","licensed":true},{"id":"92d261b7","name":"Skatepark bowl","author":"dragonheart000","url":"https://superspl.at/scene/92d261b7","licensed":true},{"id":"0da683d4","name":"Stone arch bridge","author":"ethan3111","url":"https://superspl.at/scene/0da683d4","licensed":true},{"id":"309265EC-DDEB-4EB2-BA5F-BC329B0258EB","name":"Bayshore Roundhouse","author":"Polycam source · reuse terms unverified","url":"https://poly.cam/explore/capture/309265EC-DDEB-4EB2-BA5F-BC329B0258EB/bayshore%2Broundhouse","licensed":false},{"id":"ddc7cb49-4350-47e1-aad4-6cee046e3574","name":"Lostplacetest3","author":"Polycam source · reuse terms unverified","url":"https://poly.cam/explore/capture/ddc7cb49-4350-47e1-aad4-6cee046e3574/Lostplacetest3","licensed":false},{"id":"caaa1fb4","name":"Painted coastal bunker","author":"bernfra","url":"https://superspl.at/scene/caaa1fb4","licensed":true},{"id":"f0137e7f","name":"Freeman Alley","author":"matousekfoto","url":"https://superspl.at/scene/f0137e7f","licensed":true},{"id":"b3a9bb2b","name":"Dilapidated Parking Lot","author":"bneg","url":"https://superspl.at/scene/b3a9bb2b","licensed":true},{"id":"ecdefcaa","name":"Skate-park","author":"florian_schill","url":"https://superspl.at/scene/ecdefcaa","licensed":true},{"id":"1c7ac632","name":"Kulturlokschuppen railway depot","author":"simonbethke","url":"https://superspl.at/scene/1c7ac632","licensed":true},{"id":"76d06bae","name":"Garage_01","author":"aaahhh","url":"https://superspl.at/scene/76d06bae","licensed":true},{"id":"e49fcd4e","name":"Topsham street scan","author":"nbvs","url":"https://superspl.at/scene/e49fcd4e","licensed":true}];
+  // A new spatial composition, not just a shuffled ring. Each model is
+  // assigned a fresh size role independently of identity on every reload.
+  const random=()=>Math.random(),between=(a,b)=>a+(b-a)*random();
+  const targetCount=15;
+  const modes=["broken orbit","rising spiral","dense cluster","wide constellation","vertical wheel","layered islands"];
+  const mode=modes[Math.floor(random()*modes.length)],phase=between(0,Math.PI*2),orbitSpeed=between(.019,.065)*(random()<.5?-1:1);
+  const layoutTilt=mode==="vertical wheel"?between(.9,1.35):mode==="broken orbit"?between(-.52,.52):between(-.23,.23);
+  const roles=Array.from({length:targetCount},(_,i)=>i<3?between(1.75,2.45):i<8?between(.9,1.45):between(.40,.80));
+  const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+  shuffle(roles);
+  const order=shuffle(Array.from({length:targetCount},(_,i)=>i));
   function makePose(i){
-    const k=slotsOrder[i%slotsOrder.length],a=phase+k/slotsOrder.length*Math.PI*2+between(-.13,.13);
-    const radius=mode==="spatial constellation"?between(3.0,6.2):mode==="rising spiral"?between(4.1,5.7):between(3.9,6.0);
-    const y=mode==="rising spiral"?(k-6)*.52+between(-.25,.25):mode==="spatial constellation"?between(-2.0,2.0):between(-.85,1.1);
-    return {x:Math.sin(a)*radius,y,z:Math.cos(a)*radius,yaw:a+Math.PI+between(-.48,.48),pitch:between(-.16,.16),roll:between(-.13,.13),scale:between(.74,1.25)};
+    const k=order[i%targetCount],a=phase+k/targetCount*Math.PI*2+between(-.17,.17);
+    let radius,y,x,z;
+    if(mode==="dense cluster"){radius=between(1.6,4.5);y=between(-1.6,1.6);}
+    else if(mode==="wide constellation"){radius=between(2.7,7.2);y=between(-3.1,3.1);}
+    else if(mode==="rising spiral"){radius=between(2.9,5.6);y=(k-7)*.64+between(-.35,.35);}
+    else if(mode==="vertical wheel"){radius=between(3.1,5.5);y=between(-.55,.55);}
+    else if(mode==="layered islands"){radius=k%3===0?between(1.2,2.4):between(4.5,6.8);y=(k%3-1)*2.2+between(-.5,.5);}
+    else{radius=between(3.3,6.2);y=between(-1.1,1.2);}
+    x=Math.sin(a)*radius;z=Math.cos(a)*radius;
+    return {x,y,z,yaw:a+Math.PI+between(-1.05,1.05),pitch:between(-.28,.28),roll:between(-.24,.24),scale:roles[i%targetCount]};
   }
-  const poses=Array.from({length:13},(_,i)=>makePose(i));
+  const poses=Array.from({length:targetCount},(_,i)=>makePose(i));
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   let active = null;
   let loading = false;
@@ -102,8 +111,8 @@
     scene.background = new THREE.Color(backgroundColor());
 
     const camera = new THREE.PerspectiveCamera(43, (canvasRoot.clientWidth || window.innerWidth) / Math.max(1, canvasRoot.clientHeight || window.innerHeight), .05, 120);
-    const cameraAngle=between(0,Math.PI*2), cameraDistance=between(14,17.5)*Math.max(1,.85/camera.aspect);
-    camera.position.set(Math.sin(cameraAngle)*cameraDistance,between(1.1,4.7),Math.cos(cameraAngle)*cameraDistance);
+    const cameraAngle=between(0,Math.PI*2), cameraDistance=(mode==='dense cluster'?between(10,14):between(14,21))*Math.max(1,.85/camera.aspect);
+    camera.position.set(Math.sin(cameraAngle)*cameraDistance,between(-1.1,7.2),Math.cos(cameraAngle)*cameraDistance);
     camera.lookAt(0, 0, 0);
 
     const renderer = new THREE.WebGLRenderer({
@@ -162,14 +171,14 @@
     const importers=[],messages=[];
     const localList = document.getElementById("local-captures");
     function countLocal() {
-      if(countLabel) countLabel.textContent = (originalLoaded+localMeshes.size) + " / 12 loaded · "+mode;
+      if(countLabel) countLabel.textContent = (originalLoaded+localMeshes.size) + " / "+targetCount+" loaded · "+mode;
     }
     if(localList){
       localList.replaceChildren();
       for(let i=0;i<localSlots.length;i++){
         const item=localSlots[i], row=document.createElement("div");row.className="capture-row";
         const name=document.createElement(item?"a":"span");name.textContent=item?item.name:"Additional unique scan "+(i-3);
-        if(item){name.href=item.url;name.target="_blank";name.rel="noopener noreferrer";name.title=item.author+" — source";if(i<4||i===6)name.textContent+=" · "+item.author+" (CC BY 4.0, reduced preview)";}
+        if(item){name.href=item.url;name.target="_blank";name.rel="noopener noreferrer";name.title=item.author+" — source";if(item.licensed)name.textContent+=" · "+item.author+" (CC BY 4.0, reduced preview)";}
         const input=document.createElement("input");input.type="file";input.accept=".ply";input.setAttribute("aria-label","Select "+name.textContent+" PLY");
         const msg=document.createElement("small");msg.textContent=item?"Choose downloaded standard PLY":"Use a cleared, different graffiti capture";
         const flip=document.createElement("button");flip.type="button";flip.textContent="Flip";flip.disabled=true;
@@ -181,16 +190,16 @@
           if(localBusy){msg.textContent="Finish the current import first";input.value="";return;}
           const key=file.name+":"+file.size;
           if(usedFiles.has(key)&&localMeshes.get(i)?.key!==key){msg.textContent="This file is already in the composition";input.value="";return;}
-          if(captures.length+localMeshes.size>=12&&!localMeshes.has(i)){msg.textContent="12 capture limit reached";return;}
+          if(captures.length+localMeshes.size>=targetCount&&!localMeshes.has(i)){msg.textContent=targetCount+" capture limit reached";return;}
           localBusy=true;input.disabled=true;msg.textContent="Reading Gaussian PLY…";
           try{
-            const {readPly,makeGaussian}=await import("./local-gaussians.js");
+            const {readPly,makeGaussian}=await import("./local-gaussians.js?v=core-size-2");
             const data=await readPly(file,touchDevice?140000:320000);
             if(state.disposed)return;
             const mesh=makeGaussian(THREE,data), holder=new THREE.Group(),old=localMeshes.get(i);
             if(old){orbit.remove(old.holder);old.mesh.dispose();usedFiles.delete(old.key);state.splats=state.splats.filter(x=>x!==old.mesh);}
-            const pose=poses[6+i];holder.position.set(pose.x,pose.y,pose.z);holder.rotation.set(pose.pitch,pose.yaw,pose.roll);holder.scale.setScalar(pose.scale);
-            holder.add(mesh);orbit.add(holder);state.splats.push(mesh);localMeshes.set(i,{mesh,holder,key});usedFiles.add(key);
+            const poseIndex=old?.poseIndex??(captures.length+localMeshes.size),pose=poses[poseIndex];holder.position.set(pose.x,pose.y,pose.z);holder.rotation.set(pose.pitch,pose.yaw,pose.roll);holder.scale.setScalar(pose.scale);
+            holder.add(mesh);orbit.add(holder);state.splats.push(mesh);localMeshes.set(i,{mesh,holder,key,poseIndex});usedFiles.add(key);
             // Preserve the random camera framing as additional scans arrive.
             mesh.updateForCamera(camera,renderer,performance.now());needsRender=true;countLocal();flip.disabled=yaw.disabled=false;
             msg.textContent=data.count.toLocaleString()+" / "+data.sourceCount.toLocaleString()+" Gaussians";return true;
@@ -201,7 +210,7 @@
       }
     }
     const bulk=document.getElementById("bulk-ply"), bulkStatus=document.getElementById("bulk-status");
-    const aliases=[/leake|de67a02f/i,/nexels|77ec8209/i,/skate|92d261b7/i,/stone|arch|bridge|0da683d4/i,/bayshore|roundhouse|309265ec/i,/lostplace|ddc7cb49/i,/bunker|caaa1fb4/i];
+    const aliases=[/leake|de67a02f/i,/nexels|77ec8209/i,/skate.?park.?bowl|92d261b7/i,/stone|arch|bridge|0da683d4/i,/bayshore|roundhouse|309265ec/i,/lostplace|ddc7cb49/i,/bunker|caaa1fb4/i,/freeman|f0137e7f/i,/parking|b3a9bb2b/i,/skate.?park(?!.*bowl)|ecdefcaa/i,/kulturlokschuppen|1c7ac632/i,/garage|76d06bae/i,/topsham|e49fcd4e/i];
     if(bulk)bulk.onchange=async()=>{
       if(localBusy)return;
       const files=Array.from(bulk.files||[]), unknown=[], matched=new Map(), ambiguous=[];
@@ -222,9 +231,9 @@
     // Models prepared from public, downloadable CC BY sources. Raw repository
     // fallback also works when a bot commit does not trigger a Pages rebuild.
     async function loadHostedModels(){
-      for(const i of [0,2,3,6,1]){
+      for(const i of [0,2,3,7,8,9,10,11,12,1,6]){
         if(state.disposed)return;
-        if(localMeshes.has(i)||captures.length+localMeshes.size>=12)continue;
+        if(localMeshes.has(i)||captures.length+localMeshes.size>=targetCount)continue;
         const id=localSlots[i].id;
         if(messages[i])messages[i].textContent="Checking automatic preview…";
         try{
@@ -367,7 +376,7 @@
 
     function addCapture(item, index) {
       const holder = new THREE.Group(),pose=poses[index];
-      holder.position.set(pose.x,pose.y,pose.z);holder.rotation.set(pose.pitch,pose.yaw,pose.roll);holder.scale.setScalar(item.scale*pose.scale);
+      holder.position.set(pose.x,pose.y,pose.z);holder.rotation.set(pose.pitch,pose.yaw,pose.roll);holder.scale.setScalar(item.scale*pose.scale*1.15);
       orbit.add(holder);
 
       const splat = new LumaSplatsThree({

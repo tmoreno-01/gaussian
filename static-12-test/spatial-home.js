@@ -19,20 +19,21 @@
     { id: "3adabd81-8ef0-4257-92cb-a2929ef8aa8a", scale: .68, y: .16, tilt: -.025 }
   ];
 
-  // Composition-only placeholders: deliberately reuse known graffiti scans until
-  // six additional compatible captures can be independently sourced.
-  const overrides = new URLSearchParams(location.search).getAll("capture").map(value => {
-    const m = value.match(/^(?:https:\/\/lumalabs\.ai\/capture\/)?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/i);
-    return m ? m[1] : null;
-  }).filter(Boolean).slice(0,6);
-  const sixOnly = new URLSearchParams(location.search).get("count") === "6";
-  const extras = [3,0,5,2,1,4].map((i,j) => ({
-    ...originalCaptures[i], id: overrides[j] || originalCaptures[i].id,
-    scale:[.46,.54,.48,.58,.44,.52][j],
+  // Never fill missing slots with duplicate captures.
+  const seen = new Set(originalCaptures.map(c=>c.id.toLowerCase()));
+  const overrides = new URLSearchParams(location.search).getAll("capture").map(value=>{
+    const m=value.match(/^(?:https:\/\/lumalabs\.ai\/capture\/)?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/i);
+    return m ? m[1].toLowerCase() : null;
+  }).filter(id=>{if(!id||seen.has(id))return false;seen.add(id);return true;}).slice(0,6);
+  const extras = overrides.map((id,j)=>({
+    id, scale:[.46,.54,.48,.58,.44,.52][j],
     y:[1.18,.92,1.42,1.05,1.25,.84][j],
     tilt:[.11,-.08,.06,-.13,.09,-.05][j], outer:true
   }));
+  const sixOnly = new URLSearchParams(location.search).get("count") === "6" || extras.length===0;
   const captures = sixOnly ? originalCaptures : [...originalCaptures,...extras];
+  const countLabel = document.getElementById("capture-count");
+  if(countLabel)countLabel.textContent = captures.length + " unique captures · " + (captures.length===12?"complete":"additional scans pending");
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   let active = null;
   let loading = false;

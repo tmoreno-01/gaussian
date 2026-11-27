@@ -34,7 +34,7 @@
   const captures = originalCaptures;
   const countLabel = document.getElementById("capture-count");
   if(countLabel)countLabel.textContent = "Loading graffiti captures…";
-  const localSlots = [{"id":"f0137e7f","name":"Freeman Alley","author":"matousekfoto","url":"https://superspl.at/scene/f0137e7f","licensed":true},{"id":"f4897475","name":"Artillery Passage","author":"David Fletcher","url":"https://superspl.at/scene/f4897475","licensed":true},{"id":"suvilahti-skatepark","name":"Suvilahti DIY — cropped skatepark","author":"flyAR","url":"https://flyar.fi/work/suvilahti-diy-project-eternal","localOnly":true}];
+  const localSlots = [{"id":"f0137e7f","name":"Freeman Alley","author":"matousekfoto","url":"https://superspl.at/scene/f0137e7f","licensed":true},{"id":"f4897475","name":"Artillery Passage","author":"David Fletcher","url":"https://superspl.at/scene/f4897475","licensed":true,"orientation":"z-flip"},{"id":"suvilahti-skatepark","name":"Suvilahti DIY — cropped skatepark","author":"flyAR","url":"https://flyar.fi/work/suvilahti-diy-project-eternal","localOnly":true,"orientation":"none"}];
   // A new spatial composition, not just a shuffled ring. Each model is
   // assigned a fresh size role independently of identity on every reload.
   const random=()=>Math.random(),between=(a,b)=>a+(b-a)*random();
@@ -70,7 +70,7 @@
     // The alley's narrow geometry needs a substantial footprint.
     if(id==="f0137e7f")return Math.min(6.2,Math.max(3.1,role*between(1.28,1.62)));
     if(id==="suvilahti-skatepark")return Math.min(3.8,Math.max(2.0,role*.85));
-    if(id==="f4897475")return Math.min(4.6,Math.max(2.0,role));
+    if(id==="f4897475")return Math.min(2.8,Math.max(1.45,role*1.08));
     return Math.min(5.35,role*between(.96,1.20));
   }
   // Sample each model's scale once: opening camera selection and loading
@@ -84,8 +84,8 @@
   function openingView(aspect){
     const aspectFactor=Math.max(1,.66/aspect),vertical=Math.tan(43*Math.PI/360);
     const samples=[...originalCaptures,...localSlots].map((item,i)=>{
-      const lamp=item.id==="9c6e8bac-3b79-4f39-a605-58999d33c33c",alley=item.id==="f0137e7f";
-      return {pose:poses[i],scale:assignedScales.get(item.id),w:lamp?1.12:alley?2.65:1.95,h:lamp?1.65:alley?1.55:1.35,lamp};
+      const lamp=item.id==="9c6e8bac-3b79-4f39-a605-58999d33c33c",alley=item.id==="f0137e7f",artillery=item.id==="f4897475";
+      return {pose:poses[i],scale:assignedScales.get(item.id),w:lamp?1.12:alley?2.65:artillery?1.45:1.95,h:lamp?1.65:alley?1.55:artillery?1.55:1.35,lamp};
     });
     const candidates=[],start=between(0,Math.PI*2);
     for(let i=0;i<24;i++){
@@ -277,8 +277,8 @@
         if(item){name.href=item.url;name.target="_blank";name.rel="noopener noreferrer";name.title=item.author+" — source";if(item.licensed)name.textContent+=" · "+item.author+" (CC BY 4.0, reduced preview)";}
         const input=document.createElement("input");input.type="file";input.accept=".ply";input.setAttribute("aria-label","Select "+name.textContent+" PLY");
         const msg=document.createElement("small");msg.textContent=item?"Choose downloaded standard PLY":"Use a cleared, different graffiti capture";
-        const flip=document.createElement("button");flip.type="button";flip.textContent="Flip";flip.disabled=true;
-        flip.onclick=()=>{const mesh=localMeshes.get(i)?.mesh;if(mesh){mesh.rotation.x+=Math.PI;needsRender=true;}};
+        const flip=document.createElement("button");flip.type="button";flip.textContent="Flip Y";flip.disabled=true;
+        flip.onclick=()=>{const mesh=localMeshes.get(i)?.mesh;if(mesh){mesh.scale.y*=-1;needsRender=true;}};
         const yaw=document.createElement("button");yaw.type="button";yaw.textContent="Turn 90°";yaw.disabled=true;
         yaw.onclick=()=>{const mesh=localMeshes.get(i)?.mesh;if(mesh){mesh.rotation.y+=Math.PI/2;needsRender=true;}};
         const importFile=async(file)=>{
@@ -292,7 +292,7 @@
             const {readPly,makeGaussian}=await import("./local-gaussians.js?v=clean-floaters-1");
             const data=await readPly(file,touchDevice?140000:320000,cleanupEnabled);
             if(state.disposed)return;
-            const mesh=makeGaussian(THREE,data), holder=new THREE.Group(),old=localMeshes.get(i);
+            const mesh=makeGaussian(THREE,data,item.orientation||"x-flip"), holder=new THREE.Group(),old=localMeshes.get(i);
             if(old){orbit.remove(old.holder);old.mesh.dispose();usedFiles.delete(old.key);state.splats=state.splats.filter(x=>x!==old.mesh);}
             const poseIndex=captures.length+i,pose=poses[poseIndex];holder.position.set(pose.x,pose.y,pose.z);holder.rotation.set(pose.pitch,pose.yaw,pose.roll);// The long, narrow arch reads smaller than other models at equal bounding-box size.
             const calibratedScale=assignedScales.get(item.id);

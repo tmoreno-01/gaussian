@@ -262,7 +262,7 @@ html.site-loading .test-switch{visibility:hidden}
     <div class="spatial-stage" id="spatial-stage" aria-label="Interactive 3D Gaussian-splat graffiti scenes">
       <div id="spatial-canvas-root"></div>
       <div class="spatial-vignette" aria-hidden="true"></div>
-      <!-- Composition test: six original captures by @Volt_Edge, plus six repeated placeholder instances unless override capture URLs are supplied. -->
+      <!-- Composition test: six original captures by @Volt_Edge, additional distinct captures only. -->
       <div id="spatial-error" class="visually-hidden" role="status" hidden></div>
     </div>
   </section>
@@ -494,7 +494,7 @@ html.site-loading .test-switch{visibility:hidden}
   timer=setTimeout(finish,30000);
 })();
 </script>
-<script type="module" src="./spatial-home.js"></script>
+<script type="module" src="./spatial-home.js?v=unique-only"></script>
 
-<aside class="test-switch" aria-label="Composition comparison"><a href="?count=6">6 captures</a><a href="?count=12">12 captures</a></aside><script>document.querySelector('.test-switch a[href="?count='+(new URLSearchParams(location.search).get('count')==='6'?'6':'12')+'"]').setAttribute('aria-current','true');</script></body>
+<aside class="test-switch" aria-label="Composition status"><span id="capture-count">Unique captures only</span><a href="./sources.html">New capture shortlist</a></aside></body>
 </html>

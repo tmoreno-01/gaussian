@@ -95,7 +95,12 @@
     if(id==="f0137e7f")return 1.35*Math.min(6.2,Math.max(3.1,role*between(1.28,1.62)));
     if(id==="suvilahti-skatepark")return .512*Math.min(4.6,Math.max(3.6,role*1.55));
     if(id==="f4897475") return between(.22, .34);
-    return Math.min(5.35,role*between(.96,1.20));
+    const base = Math.min(5.35,role*between(.96,1.20));
+    if (id === "cf77b996-5ec4-48fc-b1d6-7aa620dd163c") {
+      const variation = random() < .35 ? between(1.30, 1.45) : between(.85, 1.12);
+      return base * variation;
+    }
+    return base;
   }
   // Sample each model's scale once: opening camera selection and loading
   // must use the very same random composition.

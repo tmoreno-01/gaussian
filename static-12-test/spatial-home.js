@@ -42,7 +42,7 @@
   const modes=["broken orbit","dense cluster","wide constellation","layered islands"];
   const mode=modes[Math.floor(random()*modes.length)],phase=between(0,Math.PI*2),orbitSpeed=.035;
   const layoutTilt=0;
-  const roles=Array.from({length:targetCount},(_,i)=>i<2?between(2.15,2.85):i<5?between(1.65,2.05):between(1.20,1.55));
+  const roles=Array.from({length:targetCount},(_,i)=>i<2?between(2.35,3.05):i<5?between(1.45,2.20):between(.90,1.45));
   const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
   shuffle(roles);
   const order=shuffle(Array.from({length:targetCount},(_,i)=>i));
@@ -57,6 +57,15 @@
     return {x,y,z,yaw:a+Math.PI+between(-.95,.95),pitch:between(-.095,.095),roll:between(-.075,.075),scale:roles[i%targetCount]};
   }
   const poses=Array.from({length:targetCount},(_,i)=>makePose(i));
+  function captureScale(id,role){
+    // Slender street furniture is usually an accent, rarely a hero.
+    if(id==="9c6e8bac-3b79-4f39-a605-58999d33c33c"){
+      return random()<.16?between(1.9,2.6):Math.min(1.65,role*between(.48,.78));
+    }
+    // The alley's narrow geometry needs a substantial footprint.
+    if(id==="f0137e7f")return Math.max(2.05,role*between(1.20,1.48));
+    return role*between(.90,1.12);
+  }
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   let active = null;
   let loading = false;
@@ -204,8 +213,8 @@
             const mesh=makeGaussian(THREE,data), holder=new THREE.Group(),old=localMeshes.get(i);
             if(old){orbit.remove(old.holder);old.mesh.dispose();usedFiles.delete(old.key);state.splats=state.splats.filter(x=>x!==old.mesh);}
             const poseIndex=old?.poseIndex??(captures.length+localMeshes.size),pose=poses[poseIndex];holder.position.set(pose.x,pose.y,pose.z);holder.rotation.set(pose.pitch,pose.yaw,pose.roll);// The long, narrow arch reads smaller than other models at equal bounding-box size.
-            const captureScale=pose.scale;
-            holder.scale.setScalar(captureScale);
+            const calibratedScale=captureScale(item.id,pose.scale);
+            holder.scale.setScalar(calibratedScale);
             holder.add(mesh);orbit.add(holder);state.splats.push(mesh);localMeshes.set(i,{mesh,holder,key,poseIndex});usedFiles.add(key);applySolo();
             // Preserve the random camera framing as additional scans arrive.
             mesh.updateForCamera(camera,renderer,performance.now());needsRender=true;countLocal();flip.disabled=yaw.disabled=false;
@@ -388,7 +397,7 @@
 
     function addCapture(item, index) {
       const holder = new THREE.Group(),pose=poses[index];
-      holder.position.set(pose.x,pose.y,pose.z);holder.rotation.set(pose.pitch,pose.yaw,pose.roll);holder.scale.setScalar(item.scale*pose.scale*1.40);
+      holder.position.set(pose.x,pose.y,pose.z);holder.rotation.set(pose.pitch,pose.yaw,pose.roll);holder.scale.setScalar(item.scale*captureScale(item.id,pose.scale)*1.40);
       orbit.add(holder);lumaHolders.set(item.id,holder);applySolo();
 
       const splat = new LumaSplatsThree({

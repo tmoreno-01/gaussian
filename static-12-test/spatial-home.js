@@ -34,7 +34,7 @@
   const captures = originalCaptures;
   const countLabel = document.getElementById("capture-count");
   if(countLabel)countLabel.textContent = "Loading graffiti captures…";
-  const localSlots = [{"id":"f0137e7f","name":"Freeman Alley","author":"matousekfoto","url":"https://superspl.at/scene/f0137e7f","licensed":true},{"id":"f4897475","name":"Artillery Passage","author":"David Fletcher","url":"https://superspl.at/scene/f4897475","licensed":true,"orientation":"z-flip"},{"id":"suvilahti-skatepark","name":"Suvilahti DIY — cropped skatepark","author":"flyAR","url":"https://flyar.fi/work/suvilahti-diy-project-eternal","localOnly":true,"orientation":"none"}];
+  const localSlots = [{"id":"f0137e7f","name":"Freeman Alley","author":"matousekfoto","url":"https://superspl.at/scene/f0137e7f","licensed":true},{"id":"f4897475","name":"Artillery Passage","author":"David Fletcher","url":"https://superspl.at/scene/f4897475","licensed":true,"orientation":"z-flip"},{"id":"suvilahti-skatepark","name":"Suvilahti DIY — cropped skatepark","author":"flyAR","url":"https://flyar.fi/work/suvilahti-diy-project-eternal","localOnly":true,"orientation":"none","splatSize":1.20,"opacityBoost":1.10}];
   // A new spatial composition, not just a shuffled ring. Each model is
   // assigned a fresh size role independently of identity on every reload.
   const random=()=>Math.random(),between=(a,b)=>a+(b-a)*random();
@@ -69,7 +69,7 @@
     }
     // The alley's narrow geometry needs a substantial footprint.
     if(id==="f0137e7f")return Math.min(6.2,Math.max(3.1,role*between(1.28,1.62)));
-    if(id==="suvilahti-skatepark")return Math.min(3.8,Math.max(2.0,role*.85));
+    if(id==="suvilahti-skatepark")return Math.min(4.6,Math.max(3.6,role*1.55));
     if(id==="f4897475")return Math.min(2.8,Math.max(1.45,role*1.08));
     return Math.min(5.35,role*between(.96,1.20));
   }
@@ -289,10 +289,10 @@
           if(captures.length+localMeshes.size>=targetCount&&!localMeshes.has(i)){msg.textContent=targetCount+" capture limit reached";return;}
           localBusy=true;input.disabled=true;msg.textContent="Reading Gaussian PLY…";
           try{
-            const {readPly,makeGaussian}=await import("./local-gaussians.js?v=clean-floaters-1");
+            const {readPly,makeGaussian}=await import("./local-gaussians.js?v=skatepark-density-3");
             const data=await readPly(file,touchDevice?140000:320000,cleanupEnabled);
             if(state.disposed)return;
-            const mesh=makeGaussian(THREE,data,item.orientation||"x-flip"), holder=new THREE.Group(),old=localMeshes.get(i);
+            const mesh=makeGaussian(THREE,data,item.orientation||"x-flip",item.splatSize||1,item.opacityBoost||1), holder=new THREE.Group(),old=localMeshes.get(i);
             if(old){orbit.remove(old.holder);old.mesh.dispose();usedFiles.delete(old.key);state.splats=state.splats.filter(x=>x!==old.mesh);}
             const poseIndex=captures.length+i,pose=poses[poseIndex];holder.position.set(pose.x,pose.y,pose.z);holder.rotation.set(pose.pitch,pose.yaw,pose.roll);// The long, narrow arch reads smaller than other models at equal bounding-box size.
             const calibratedScale=assignedScales.get(item.id);
@@ -344,14 +344,30 @@
         }
         if(messages[i])messages[i].textContent="Checking automatic preview…";
         try{
-          const options=()=>({cache:"force-cache",signal:AbortSignal.timeout(30000)});
-          // Prefer same-origin static assets so the production site can use
-          // Cloudflare's free CDN and ordinary browser caching.
-          let response;
-          try{response=await fetch(new URL("./models/"+id+".ply",location.href),options());}catch(_){}
-          if(!response?.ok||response.headers.get("content-type")?.includes("text/html"))response=await fetch("https://raw.githubusercontent.com/tmoreno-01/gaussian/main/static-12-test/models/"+id+".ply",options());
-          if(!response.ok)throw Error("Preview model not yet available");
-          const blob=await response.blob();
+          // A previous 404 can be cached by the browser/CDN even after a new
+          // model is deployed. Use no-store plus an immutable commit URL, and
+          // try two public CDNs before reporting a genuine failure.
+          const revision="33876eef1fdfc9f95c13b80e84e3b5838b67f64f";
+          const localUrl=new URL("./models/"+id+".ply",location.href);
+          localUrl.searchParams.set("rev",revision.slice(0,8));
+          const urls=[
+            localUrl.href,
+            "https://cdn.jsdelivr.net/gh/tmoreno-01/gaussian@"+revision+"/static-12-test/models/"+id+".ply?rev="+revision.slice(0,8),
+            "https://raw.githubusercontent.com/tmoreno-01/gaussian/"+revision+"/static-12-test/models/"+id+".ply?rev="+revision.slice(0,8)
+          ];
+          let blob=null;const fetchErrors=[];
+          for(const url of urls){
+            try{
+              const response=await fetch(url,{cache:"no-store",credentials:"omit",mode:"cors",signal:AbortSignal.timeout(45000)});
+              if(!response.ok){fetchErrors.push(new URL(url).hostname+" returned HTTP "+response.status);continue;}
+              const type=response.headers.get("content-type")||"";
+              if(type.includes("text/html")){fetchErrors.push(new URL(url).hostname+" returned HTML instead of a PLY");continue;}
+              const candidate=await response.blob();
+              if(candidate.size<1000000){fetchErrors.push(new URL(url).hostname+" returned an unexpectedly small file");continue;}
+              blob=candidate;break;
+            }catch(error){fetchErrors.push(new URL(url).hostname+": "+(error.message||String(error)));}
+          }
+          if(!blob)throw Error("Preview download failed · "+fetchErrors.join(" · "));
           if(state.disposed)return;
           if(localMeshes.has(i))continue;
           while(localBusy&&!state.disposed)await new Promise(r=>setTimeout(r,100));

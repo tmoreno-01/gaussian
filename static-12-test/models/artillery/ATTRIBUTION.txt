@@ -1,0 +1,6 @@
+Artillery Passage — David Fletcher
+Original Gaussian splat published on SuperSplat: https://superspl.at/scene/f4897475
+Source redistribution: CC BY 4.0
+High-detail 5-million-splat SOG source prepared by Will Eastcott:
+https://github.com/willeastcott/splat-walk
+This site uses Spark by World Labs to render the full-detail source with streaming LOD.

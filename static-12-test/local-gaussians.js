@@ -1,7 +1,7 @@
 // Standard 3DGS PLY preview loader for the existing Three r157 renderer.
 // Uses anisotropic Gaussian covariance, DC colour, alpha and depth sorting.
 // Local files only; no service or paid storage. Not a full SH renderer.
-export async function readPly(file,limit=300000){
+export async function readPly(file,limit=300000,cleanup=true){
  const prefix=new Uint8Array(await file.slice(0,262144).arrayBuffer());
  const txt=new TextDecoder().decode(prefix),m=/end_header\r?\n/.exec(txt);
  if(!m||!/^ply\r?\n/.test(txt))throw Error('Not a PLY file');
@@ -33,7 +33,20 @@ export async function readPly(file,limit=300000){
  const count=opacity.length,lo=[],hi=[],coreLo=[],coreHi=[];
  for(let k=0;k<3;k++){const a=[];for(let i=0;i<count;i+=Math.max(1,Math.floor(count/16000)))a.push(pos[i*3+k]);a.sort((x,y)=>x-y);lo[k]=a[Math.floor((a.length-1)*.02)];hi[k]=a[Math.floor((a.length-1)*.98)];coreLo[k]=a[Math.floor((a.length-1)*.08)];coreHi[k]=a[Math.floor((a.length-1)*.92)];}
  const center=lo.map((x,i)=>(x+hi[i])/2),span=Math.max(1e-6,...hi.map((x,i)=>x-lo[i]));
- const ext=coreHi.map((x,i)=>Math.max(1e-6,x-coreLo[i])).sort((a,b)=>b-a);const coreSpan=Math.max(span*.40,Math.sqrt(ext[0]*ext[1]),1e-6);return {pos,scales,rots,colors,opacity,count,center:coreLo.map((x,i)=>(x+coreHi[i])*.5),span,coreSpan,sourceCount:n};
+ const ext=coreHi.map((x,i)=>Math.max(1e-6,x-coreLo[i])).sort((a,b)=>b-a);const coreSpan=Math.max(span*.40,Math.sqrt(ext[0]*ext[1]),1e-6),coreCenter=coreLo.map((x,i)=>(x+coreHi[i])*.5);
+ // Trim broad background ellipsoids and remote low-density samples. Leave
+ // dense surface detail alone; avoid per-frame processing.
+ const result={pos,scales,rots,colors,opacity,count,center:coreCenter,span,coreSpan,sourceCount:n,removed:0};
+ if(!cleanup)return result;
+ const maxScale=coreSpan*.18,outer=lo.map((x,i)=>Math.max((hi[i]-x)*.24,coreSpan*.20));
+ const clean={pos:[],scales:[],rots:[],colors:[],opacity:[]};
+ for(let i=0;i<count;i++){
+  const j=i*3,k=i*4,big=Math.max(scales[j],scales[j+1],scales[j+2]);
+  if(big>maxScale||[0,1,2].some(a=>pos[j+a]<lo[a]-outer[a]||pos[j+a]>hi[a]+outer[a])||(opacity[i]<.06&&big>coreSpan*.035))continue;
+  clean.pos.push(pos[j],pos[j+1],pos[j+2]);clean.scales.push(scales[j],scales[j+1],scales[j+2]);clean.rots.push(rots[k],rots[k+1],rots[k+2],rots[k+3]);clean.colors.push(colors[j],colors[j+1],colors[j+2]);clean.opacity.push(opacity[i]);
+ }
+ if(clean.opacity.length<count*.55)return result;
+ return {...result,...clean,count:clean.opacity.length,removed:count-clean.opacity.length};
 }
 export function makeGaussian(THREE,data){
  const {pos,scales,rots,colors,opacity,count,center,span}=data;

@@ -57,9 +57,14 @@ export function makeGaussian(THREE,data,orientation="x-flip",splatSize=1,opacity
  const factor=Math.min(4.2/span,3.1/(data.coreSpan||span));
  for(let i=0;i<count;i++){
   const k=4*i,j=3*i;
-  a.set([(pos[j]-center[0])*factor,(pos[j+1]-center[1])*factor,(pos[j+2]-center[2])*factor,Math.min(1,opacity[i]*opacityBoost)],k);
-  b.set([scales[j]*factor*splatSize,scales[j+1]*factor*splatSize,scales[j+2]*factor*splatSize,0],k);
-  c.set(rots.slice(k,k+4),k);d.set([...colors.slice(j,j+3),1],k);
+  for(let axis=0;axis<3;axis++){
+   a[k+axis]=(pos[j+axis]-center[axis])*factor;
+   b[k+axis]=scales[j+axis]*factor*splatSize;
+   d[k+axis]=colors[j+axis];
+   c[k+axis]=rots[k+axis];
+  }
+  a[k+3]=Math.min(1,opacity[i]*opacityBoost);
+  c[k+3]=rots[k+3];d[k+3]=1;
  }
  const texture=arr=>{const t=new THREE.DataTexture(arr,width,height,THREE.RGBAFormat,THREE.FloatType);t.minFilter=t.magFilter=THREE.NearestFilter;t.generateMipmaps=false;t.needsUpdate=true;return t;};
  const textures=[a,b,c,d].map(texture);
@@ -82,11 +87,16 @@ export function makeGaussian(THREE,data,orientation="x-flip",splatSize=1,opacity
  else if(orientation!=="none")mesh.rotation.x=Math.PI;
  const bins=512,counts=new Uint32Array(bins),offsets=new Uint32Array(bins),keys=new Uint16Array(count),depths=new Float32Array(count),mv=new THREE.Matrix4();
  let lastSort=-Infinity;
+ const sortedDirection=new THREE.Vector3(), direction=new THREE.Vector3();
  mesh.updateForCamera=(camera,renderer,now)=>{
   mat.uniforms.viewport.value.set(renderer.domElement.width,renderer.domElement.height);
   if(now-lastSort<150)return;lastSort=now;
   mesh.updateWorldMatrix(true,false);camera.updateMatrixWorld();mv.multiplyMatrices(camera.matrixWorldInverse,mesh.matrixWorld);
-  const e=mv.elements;let lo=Infinity,hi=-Infinity;
+  const e=mv.elements;
+  direction.set(e[2],e[6],e[10]).normalize();
+  if(sortedDirection.distanceToSquared(direction)<0.0001)return;
+  sortedDirection.copy(direction);
+  let lo=Infinity,hi=-Infinity;
   for(let i=0;i<count;i++){const k=i*4,z=e[2]*a[k]+e[6]*a[k+1]+e[10]*a[k+2]+e[14];depths[i]=z;lo=Math.min(lo,z);hi=Math.max(hi,z);}
   counts.fill(0);const f=(bins-1)/Math.max(1e-8,hi-lo);
   for(let i=0;i<count;i++){const k=Math.max(0,Math.min(bins-1,Math.floor((depths[i]-lo)*f)));keys[i]=k;counts[k]++;}

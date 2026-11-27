@@ -72,7 +72,7 @@
     // The alley's narrow geometry needs a substantial footprint.
     if(id==="f0137e7f")return Math.min(6.2,Math.max(3.1,role*between(1.28,1.62)));
     if(id==="suvilahti-skatepark")return .8*Math.min(4.6,Math.max(3.6,role*1.55));
-    if(id==="f4897475")return Math.min(6.2,Math.max(4.4,role*1.85));
+    if(id==="f4897475") return between(1.1, 1.7);
     return Math.min(5.35,role*between(.96,1.20));
   }
   // Sample each model's scale once: opening camera selection and loading

@@ -42,17 +42,17 @@
   const modes=["broken orbit","dense cluster","wide constellation","layered islands"];
   const mode=modes[Math.floor(random()*modes.length)],phase=between(0,Math.PI*2),orbitSpeed=.035;
   const layoutTilt=0;
-  const roles=Array.from({length:targetCount},(_,i)=>i<3?between(1.75,2.45):i<7?between(.9,1.45):between(.40,.80));
+  const roles=Array.from({length:targetCount},(_,i)=>i<3?between(1.95,2.65):i<7?between(1.40,1.85):between(1.05,1.35));
   const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
   shuffle(roles);
   const order=shuffle(Array.from({length:targetCount},(_,i)=>i));
   function makePose(i){
     const k=order[i%targetCount],a=phase+k/targetCount*Math.PI*2+between(-.17,.17);
     let radius,y,x,z;
-    if(mode==="dense cluster"){radius=between(2.2,4.6);y=between(-.30,.30);}
-    else if(mode==="wide constellation"){radius=between(3.2,6.4);y=between(-.48,.48);}
-    else if(mode==="layered islands"){radius=k%3===0?between(1.8,3.0):between(4.5,6.0);y=between(-.40,.40);}
-    else{radius=between(3.3,5.9);y=between(-.25,.25);}
+    if(mode==="dense cluster"){radius=between(1.8,3.6);y=between(-.30,.30);}
+    else if(mode==="wide constellation"){radius=between(2.8,4.7);y=between(-.48,.48);}
+    else if(mode==="layered islands"){radius=k%3===0?between(1.5,2.6):between(3.2,4.6);y=between(-.40,.40);}
+    else{radius=between(2.7,4.4);y=between(-.25,.25);}
     x=Math.sin(a)*radius;z=Math.cos(a)*radius;
     return {x,y,z,yaw:a+Math.PI+between(-.8,.8),pitch:between(-.045,.045),roll:between(-.035,.035),scale:roles[i%targetCount]};
   }
@@ -109,8 +109,8 @@
     scene.background = new THREE.Color(backgroundColor());
 
     const camera = new THREE.PerspectiveCamera(43, (canvasRoot.clientWidth || window.innerWidth) / Math.max(1, canvasRoot.clientHeight || window.innerHeight), .05, 120);
-    const cameraAngle=between(0,Math.PI*2), cameraDistance=15.5*Math.max(1,.85/camera.aspect);
-    camera.position.set(Math.sin(cameraAngle)*cameraDistance,cameraDistance*.17,Math.cos(cameraAngle)*cameraDistance);
+    const cameraAngle=between(0,Math.PI*2), cameraDistance=10.7*Math.max(1,.66/camera.aspect);
+    camera.position.set(Math.sin(cameraAngle)*cameraDistance,cameraDistance*.34,Math.cos(cameraAngle)*cameraDistance);
     camera.lookAt(0, 0, 0);
 
     const renderer = new THREE.WebGLRenderer({
@@ -148,7 +148,7 @@
     // Shorter inertia tail makes drag/pan respond sooner and settle faster.
     controls.dampingFactor = touchDevice ? .13 : .105;
     controls.enablePan = true;
-    controls.minDistance = 5.2;
+    controls.minDistance = 3.4;
     controls.maxDistance = Math.max(28,cameraDistance*1.8);
     controls.minPolarAngle = .35;
     controls.maxPolarAngle = Math.PI - .35;
@@ -202,7 +202,9 @@
             if(state.disposed)return;
             const mesh=makeGaussian(THREE,data), holder=new THREE.Group(),old=localMeshes.get(i);
             if(old){orbit.remove(old.holder);old.mesh.dispose();usedFiles.delete(old.key);state.splats=state.splats.filter(x=>x!==old.mesh);}
-            const poseIndex=old?.poseIndex??(captures.length+localMeshes.size),pose=poses[poseIndex];holder.position.set(pose.x,pose.y,pose.z);holder.rotation.set(pose.pitch,pose.yaw,pose.roll);holder.scale.setScalar(pose.scale);
+            const poseIndex=old?.poseIndex??(captures.length+localMeshes.size),pose=poses[poseIndex];holder.position.set(pose.x,pose.y,pose.z);holder.rotation.set(pose.pitch,pose.yaw,pose.roll);// The long, narrow arch reads smaller than other models at equal bounding-box size.
+            const captureScale=item.id==="0da683d4"?Math.max(2.15,pose.scale*1.42):item.id==="92d261b7"?Math.max(1.5,pose.scale*1.13):pose.scale;
+            holder.scale.setScalar(captureScale);
             holder.add(mesh);orbit.add(holder);state.splats.push(mesh);localMeshes.set(i,{mesh,holder,key,poseIndex});usedFiles.add(key);applySolo();
             // Preserve the random camera framing as additional scans arrive.
             mesh.updateForCamera(camera,renderer,performance.now());needsRender=true;countLocal();flip.disabled=yaw.disabled=false;
@@ -385,7 +387,7 @@
 
     function addCapture(item, index) {
       const holder = new THREE.Group(),pose=poses[index];
-      holder.position.set(pose.x,pose.y,pose.z);holder.rotation.set(pose.pitch,pose.yaw,pose.roll);holder.scale.setScalar(item.scale*pose.scale*1.15);
+      holder.position.set(pose.x,pose.y,pose.z);holder.rotation.set(pose.pitch,pose.yaw,pose.roll);holder.scale.setScalar(item.scale*pose.scale*1.40);
       orbit.add(holder);lumaHolders.set(item.id,holder);applySolo();
 
       const splat = new LumaSplatsThree({

@@ -329,6 +329,7 @@
                 onProgress:event=>{if(event.lengthComputable)msg.textContent="Decoding original scan · "+Math.round(event.loaded/event.total*100)+"%";}
               });
               mesh.lodScale=touchDevice?.70:1.25;
+              mesh.objectModifier=bloomFilter;
               mesh.maxSh=touchDevice?1:3;
               await mesh.initialized;
               mesh.updateGenerator();
@@ -415,6 +416,20 @@
           normalize.position.set(center.x*factor,center.y*factor,-center.z*factor);
           holder.add(normalize);orbit.add(holder);
           try{
+            // Use capture-space units so the cleanup follows the random layout scale.
+            const { Dyno, Gsplat } = sparkModule.dyno;
+            const bloomFilter = new Dyno({
+              inTypes: { gsplat: Gsplat }, outTypes: { gsplat: Gsplat },
+              statements: ({ inputs, outputs }) => {
+                const g = outputs.gsplat;
+                return [
+                  `${g} = ${inputs.gsplat};`,
+                  `float extent = max(max(${g}.scales.x, ${g}.scales.y), ${g}.scales.z);`,
+                  `float edge = smoothstep(4.0, 8.0, distance(${g}.center, vec3(-0.388, -0.971, -0.666)));`,
+                  `${g}.rgba.a *= 1.0 - smoothstep(mix(0.55, 0.18, edge), mix(1.25, 0.55, edge), extent);`
+                ];
+              }
+            });
             for(let j=0;j<5;j++){
               const url="./models/artillery/artillery-0_"+j+"-lod.rad";
               const mesh=new SplatMesh({url,paged:true,lodScale:touchDevice?.70:1.25});

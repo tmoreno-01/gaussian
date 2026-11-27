@@ -30,16 +30,16 @@ export async function readPly(file,limit=300000){
  }
  if(!opacity.length)throw Error('No valid Gaussians');
  // Robust bounds remove the influence of distant floating noise on framing.
- const count=opacity.length,lo=[],hi=[];
- for(let k=0;k<3;k++){const a=[];for(let i=0;i<count;i+=Math.max(1,Math.floor(count/16000)))a.push(pos[i*3+k]);a.sort((x,y)=>x-y);lo[k]=a[Math.floor((a.length-1)*.02)];hi[k]=a[Math.floor((a.length-1)*.98)];}
+ const count=opacity.length,lo=[],hi=[],coreLo=[],coreHi=[];
+ for(let k=0;k<3;k++){const a=[];for(let i=0;i<count;i+=Math.max(1,Math.floor(count/16000)))a.push(pos[i*3+k]);a.sort((x,y)=>x-y);lo[k]=a[Math.floor((a.length-1)*.02)];hi[k]=a[Math.floor((a.length-1)*.98)];coreLo[k]=a[Math.floor((a.length-1)*.08)];coreHi[k]=a[Math.floor((a.length-1)*.92)];}
  const center=lo.map((x,i)=>(x+hi[i])/2),span=Math.max(1e-6,...hi.map((x,i)=>x-lo[i]));
- return {pos,scales,rots,colors,opacity,count,center,span,sourceCount:n};
+ const ext=coreHi.map((x,i)=>Math.max(1e-6,x-coreLo[i])).sort((a,b)=>b-a);const coreSpan=Math.max(span*.40,Math.sqrt(ext[0]*ext[1]),1e-6);return {pos,scales,rots,colors,opacity,count,center:coreLo.map((x,i)=>(x+coreHi[i])*.5),span,coreSpan,sourceCount:n};
 }
 export function makeGaussian(THREE,data){
  const {pos,scales,rots,colors,opacity,count,center,span}=data;
  const width=1024,height=Math.ceil(count/width),texels=width*height*4;
  const a=new Float32Array(texels),b=new Float32Array(texels),c=new Float32Array(texels),d=new Float32Array(texels);
- const factor=2.6/span;
+ const factor=Math.min(4.2/span,3.1/(data.coreSpan||span));
  for(let i=0;i<count;i++){
   const k=4*i,j=3*i;
   a.set([(pos[j]-center[0])*factor,(pos[j+1]-center[1])*factor,(pos[j+2]-center[2])*factor,opacity[i]],k);

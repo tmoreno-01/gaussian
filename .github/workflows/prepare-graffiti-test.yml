@@ -30,6 +30,11 @@ jobs:
           ls -lh prepared/f4897475.ply
           test -s prepared/f4897475.ply
           test "$(stat -c%s prepared/f4897475.ply)" -lt 20000000
+      - uses: actions/upload-artifact@v4
+        with:
+          name: graffiti-preview-assets
+          path: prepared/f4897475.ply
+          retention-days: 1
   publish:
     needs: prepare
     runs-on: ubuntu-latest

@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Matter of Perspective — web optimiser test</title>
+<style>*{box-sizing:border-box}body{margin:0;background:#030303;color:#eee;font:13px Arial,sans-serif;overflow:hidden}canvas{display:block;touch-action:none}header,footer{position:fixed;left:0;right:0;padding:18px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;z-index:2;pointer-events:none}header{top:0}footer{bottom:0}header>*,footer>*{pointer-events:auto}button,select,label.pick{background:#121212;color:#eee;border:1px solid #555;padding:9px 12px;font:inherit;cursor:pointer}label{display:inline-flex;align-items:center;gap:6px}input[type=file]{display:none}input[type=range]{accent-color:#ddd;width:100px}#seek{width:min(36vw,340px)}#intro{position:fixed;inset:0;display:grid;place-content:center;text-align:center;background:#030303eb;z-index:3;padding:24px;gap:15px}#intro[hidden]{display:none}h1{font-size:clamp(26px,5vw,46px);letter-spacing:-.06em;font-weight:400;margin:0}p{margin:0;max-width:450px;color:#999;line-height:1.5}#message{color:#bbb;max-width:450px;overflow-wrap:anywhere;min-height:18px}#status{color:#aaa;font-size:11px}button:disabled{opacity:.5}a{color:#aaa}.controls{display:flex;align-items:center;flex-wrap:wrap;gap:12px}</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.157.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.157.0/examples/jsm/"}}</script></head>
+<body><header><span>Matter of Perspective / web optimiser research</span><div class="controls"><label>Quality <select id="tier"><option value="desktop">Desktop</option><option value="mobile">Mobile</option></select></label><label class="pick" for="file">Open asset folder</label></div></header>
+<input id="file" type="file" webkitdirectory multiple><div id="intro"><h1>Moving fragments.</h1><p>Extract the optimiser output ZIP if needed, then select one generated asset folder. The folder stays on your device. Use the quality menu to compare mobile and desktop tiers.</p><div><label class="pick" for="file">Choose asset folder</label></div><div id="message" role="status"></div></div>
+<footer><div class="controls"><button id="play" disabled>Pause</button><button id="orbit">Orbit off</button><label>Detail <select id="detail"><option value="1">Original</option><option value="4" selected>Fine</option></select></label><label>Size <input id="size" type="range" min=".4" max="2" step=".05" value="1"></label><label>Depth limit <input id="depth" type="range" min="1.5" max="12" step=".1" value="4"></label><button id="reset">Reset</button></div><div class="controls"><input id="seek" type="range" min="0" max="1" value="0" step="1" disabled><span id="status">Awaiting folder</span></div></footer>
+<script type="module">
+import * as THREE from 'three';import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+const $=id=>document.getElementById(id);
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);renderer.setClearColor(0x030303);document.body.prepend(renderer.domElement);
+const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(43,innerWidth/innerHeight,.01,200),controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.08;
+const root=new THREE.Group();scene.add(root);let cloud=null,geo=null,mat=null,meta=null,zip=null,cache=new Map(),pending=new Map(),generation=0,ready=false,playing=true,orbit=false,t=0,last=0,stats=0,ticks=0,pair='',slots=[],initial=null,dragging=false,orbitTime=0,failed=false;
+const W=30,BACK=4,PARALLEL=3;
+const td=new TextDecoder();
+async function readZip(fileList){
+ const files=new Map(Array.from(fileList,f=>[f.webkitRelativePath||f.name,f]));
+ const tier=$('tier').value;
+ const candidates=[...files.keys()].filter(k=>k.endsWith('/'+tier+'/sequence.json'));
+ const direct=[...files.keys()].filter(k=>k.endsWith('/sequence.json'));
+ const path=candidates.length===1?candidates[0]:direct.length===1?direct[0]:null;
+ if(!path)throw Error('Select one generated asset folder (or its mobile/desktop subfolder).');
+ const manifest=JSON.parse(await files.get(path).text()),base=path.slice(0,path.lastIndexOf('/')+1);
+ if(manifest.format!=='lal-web-depth-v1')throw Error('Not a web optimiser asset.');
+ const {width:w,height:h,num_frames:n,chunks,depth_encoding:enc}=manifest;
+ if(!Number.isInteger(w)||!Number.isInteger(h)||w<2||h<2||w*h>1200000||!Number.isInteger(n)||n<1||n>30000||!Array.isArray(chunks)||!Number.isInteger(enc.quantization_max)||enc.quantization_max<1||enc.quantization_max>65535)throw Error('Invalid web manifest');
+ let next=0;for(const c of chunks){if(c.start!==next||!Number.isInteger(c.count)||c.count<1||c.count>120||!/^\d+\.lal$/.test(c.file)||!files.has(base+c.file))throw Error('Incomplete chunk directory');next+=c.count;}if(next!==n)throw Error('Incomplete sequence');
+ const index=new Int32Array(n);chunks.forEach((c,k)=>index.fill(k,c.start,c.start+c.count));
+ const recent=new Map(),inflight=new Map();
+ async function loadChunk(k){
+  if(recent.has(k)){const frames=recent.get(k);recent.delete(k);recent.set(k,frames);return frames;}
+  if(inflight.has(k))return inflight.get(k);
+  const p=(async()=>{
+   const c=chunks[k],f=files.get(base+c.file);
+   if(f.size!==c.bytes)throw Error('Chunk size mismatch');
+   const raw=await new Response(f.stream().pipeThrough(new DecompressionStream('deflate'))).arrayBuffer(),dv=new DataView(raw),u8=new Uint8Array(raw);
+   if(raw.byteLength<8||td.decode(u8.subarray(0,4))!=='LAL1'||dv.getUint32(4,true)!==c.count)throw Error('Invalid chunk header');
+   const frames=[];let pos=8,prev=null;
+   for(let i=0;i<c.count;i++){
+    if(pos+4+w*h*2>raw.byteLength)throw Error('Truncated depth');
+    const len=dv.getUint32(pos,true);pos+=4;
+    if(len<1||pos+w*h*2+len>raw.byteLength)throw Error('Truncated colour');
+    const q=new Uint16Array(w*h),depth=new Uint8Array(w*h*2),depthView=new DataView(depth.buffer);
+    for(let y=0;y<h;y++){let sum=0;for(let x=0;x<w;x++){const j=y*w+x;sum=(sum+dv.getUint16(pos+2*j,true))&65535;q[j]=(sum+(prev?prev[j]:0))&65535;if(q[j]>enc.quantization_max)throw Error('Invalid quantized depth');depthView.setUint16(j*2,Math.round(q[j]*65535/enc.quantization_max),true);}}
+    pos+=w*h*2;frames.push({depth,jpg:u8.slice(pos,pos+len)});pos+=len;prev=q;
+   }
+   if(pos!==raw.byteLength)throw Error('Unexpected chunk data');
+   recent.set(k,frames);while(recent.size>4)recent.delete(recent.keys().next().value);return frames;
+  })().finally(()=>inflight.delete(k));inflight.set(k,p);return p;
+ }
+ const m={...manifest,format:'lal-depth-sequence-v1'};
+ return {async get(name,limit){if(name==='sequence.json')return new TextEncoder().encode(JSON.stringify(m));
+ const match=/^(depth|color)\/(\d+)\.(bin|jpg)$/.exec(name);if(!match)throw Error('Unknown frame entry');
+ const i=Number(match[2]);if(i<0||i>=n)throw Error('Invalid frame index');const k=index[i],frames=await loadChunk(k),f=frames[i-chunks[k].start],b=match[1]==='depth'?f.depth:f.jpg;if(b.length>limit)throw Error('Invalid frame size');return b;}};
+}
+const vertexShader=`
+uniform sampler2D da,db,ca,cb;
+uniform int gridW,gridH,samples;
+uniform vec4 intr;
+uniform vec2 logRange;
+uniform float blend,cutoff,sizeScale,pixelScale;
+out vec3 vColor;
+flat out float valid;
+struct S {vec3 p;vec3 c;float z;};
+float unpackZ(vec2 b){float q=dot(floor(b*255.+.5),vec2(1.,256.));return exp(mix(logRange.x,logRange.y,q/65535.));}
+S readP(ivec2 xy){
+ float a=unpackZ(texelFetch(da,xy,0).rg),b=unpackZ(texelFetch(db,xy,0).rg);
+ vec3 c=texelFetch(ca,xy,0).rgb,d=texelFetch(cb,xy,0).rgb;
+ float m=(abs(a-b)<.06*min(a,b)&&distance(c,d)<.18)?blend:step(.5,blend);
+ float z=mix(a,b,m);
+ return S(vec3((float(xy.x)-intr.z)/intr.x*z,-(float(xy.y)-intr.w)/intr.y*z,-z),mix(c,d,m),z);
+}
+bool joined(S a,S b){return a.z<cutoff&&b.z<cutoff&&abs(a.z-b.z)<.035*min(a.z,b.z);}
+S mid(S a,S b){return S(mix(a.p,b.p,.5),mix(a.c,b.c,.5),mix(a.z,b.z,.5));}
+void main(){
+ int id=gl_VertexID/samples,sub=gl_VertexID%samples;ivec2 xy=ivec2(id%gridW,id/gridW);S p=readP(xy);valid=p.z<cutoff?1.:0.;
+ if(sub==1){if(xy.x+1>=gridW)valid=0.;else{S r=readP(xy+ivec2(1,0));if(joined(p,r))p=mid(p,r);else valid=0.;}}
+ if(sub==2){if(xy.y+1>=gridH)valid=0.;else{S d=readP(xy+ivec2(0,1));if(joined(p,d))p=mid(p,d);else valid=0.;}}
+ if(sub==3){if(xy.x+1>=gridW||xy.y+1>=gridH)valid=0.;else{S r=readP(xy+ivec2(1,0)),d=readP(xy+ivec2(0,1)),q=readP(xy+ivec2(1,1));if(joined(p,r)&&joined(p,d)&&joined(r,q)&&joined(d,q))p=mid(mid(p,r),mid(d,q));else valid=0.;}}
+ vec4 mv=modelViewMatrix*vec4(p.p,1.);gl_Position=valid>.5?projectionMatrix*mv:vec4(2.,2.,2.,1.);
+ gl_PointSize=clamp(p.z/intr.x*pixelScale/max(.01,-mv.z)*sizeScale*(samples==4?1.05:1.8),1.,10.);
+ vColor=p.c;
+}`;
+const fragmentShader=`in vec3 vColor;flat in float valid;out vec4 outColor;void main(){if(valid<.5)discard;vec2 q=(gl_PointCoord-.5)*2.;float r=dot(q,q);if(r>1.)discard;outColor=vec4(vColor,1.-smoothstep(.6,1.,r));}`;
+function makeTex(data,w,h,format){const x=new THREE.DataTexture(data,w,h,format,THREE.UnsignedByteType);x.minFilter=x.magFilter=THREE.NearestFilter;x.generateMipmaps=false;x.unpackAlignment=1;x.needsUpdate=true;return x;}
+function clear(){if(cloud){root.remove(cloud);geo.dispose();mat.dispose();cloud=null;}for(const x of slots){x.d.dispose();x.c.dispose();}slots=[];cache.clear();pending.clear();pair='';ready=false;failed=false;root.position.set(0,0,0);root.rotation.set(0,0,0);}
+function setFrame(i,j,b){const key=i+':'+j;if(key!==pair){const a=slot(i,j),z=j===i?a:slot(j,i),u=mat.uniforms;u.da.value=a.d;u.db.value=z.d;u.ca.value=a.c;u.cb.value=z.c;pair=key;}mat.uniforms.blend.value=b;}
+function slot(i,avoid){let x=slots.find(s=>s.i===i);if(x)return x;const f=cache.get(i);if(!f)throw Error('Missing decoded frame');x=slots.find(s=>s.i!==avoid);if(!x){x={d:makeTex(f.depth,meta.width,meta.height,THREE.RGFormat),c:makeTex(f.rgb,meta.width,meta.height,THREE.RGBAFormat)};slots.push(x);}else{x.d.image.data=f.depth;x.c.image.data=f.rgb;x.d.needsUpdate=x.c.needsUpdate=true;}x.i=i;return x;}
+const cv=document.createElement('canvas'),ctx=cv.getContext('2d',{willReadFrequently:true});
+async function decode(i,token,z,m){const n=String(i).padStart(6,'0'),[depth,jpg]=await Promise.all([z.get('depth/'+n+'.bin',m.width*m.height*2),z.get('color/'+n+'.jpg',8*1024*1024)]);if(depth.length!==m.width*m.height*2)throw Error('Invalid depth dimensions');const bmp=await createImageBitmap(new Blob([jpg],{type:'image/jpeg'}));try{if(token!==generation)return;if(bmp.width!==m.width||bmp.height!==m.height)throw Error('Invalid colour dimensions');if(cv.width!==m.width||cv.height!==m.height){cv.width=m.width;cv.height=m.height;}ctx.drawImage(bmp,0,0);const rgb=ctx.getImageData(0,0,m.width,m.height).data;cache.set(i,{depth,rgb:new Uint8Array(rgb.buffer)});}finally{bmp.close();}}
+function request(i){if(cache.has(i))return Promise.resolve();if(pending.has(i))return pending.get(i);const token=generation,z=zip,m=meta;const p=decode(i,token,z,m).catch(e=>{if(token===generation){failed=true;ready=false;$('intro').hidden=false;$('message').textContent='Frame '+i+': '+e.message;}throw e;}).finally(()=>{if(token===generation)pending.delete(i);});pending.set(i,p);return p;}
+function fill(i){if(failed||!meta)return;const n=meta.num_frames;for(const k of cache.keys()){const forward=(k-i+n)%n,back=(i-k+n)%n;if(forward>=W&&back>BACK)cache.delete(k);}for(let a=0;a<Math.min(W,n)&&pending.size<PARALLEL;a++){const k=(i+a)%n;if(!cache.has(k)&&!pending.has(k))request(k).catch(()=>{});}}
+function bounds(f){const {width:w,height:h,intrinsics:k,depth_encoding:d}=meta,v=new DataView(f.depth.buffer,f.depth.byteOffset,f.depth.byteLength),cut=Number($('depth').value),lo=[Infinity,Infinity,Infinity],hi=[-Infinity,-Infinity,-Infinity];for(let y=0;y<h;y+=4)for(let x=0;x<w;x+=4){const z=Math.exp(d.log_min+v.getUint16(2*(y*w+x),true)/65535*(d.log_max-d.log_min));if(z>cut)continue;const p=[(x-k.cx)/k.fx*z,-(y-k.cy)/k.fy*z,-z];for(let a=0;a<3;a++){lo[a]=Math.min(lo[a],p[a]);hi[a]=Math.max(hi[a],p[a]);}}if(!lo.every(Number.isFinite))throw Error('No visible depth at this cutoff');return {center:lo.map((v,i)=>(v+hi[i])/2),span:Math.max(.1,...hi.map((v,i)=>v-lo[i]))};}
+function reset(){if(!initial)return;root.rotation.y=0;orbitTime=0;controls.target.set(...initial.center);camera.position.set(initial.center[0],initial.center[1]+initial.span*.035,initial.center[2]+initial.span*Math.max(1.25,1.7/camera.aspect));controls.minDistance=initial.span*.22;controls.maxDistance=initial.span*12;controls.update();}
+function mount(){const m=meta,k=m.intrinsics,d=m.depth_encoding,n=m.width*m.height,ss=Number($('detail').value);initial=bounds(cache.get(0));root.position.set(...initial.center);geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(n*4*3),3));geo.setDrawRange(0,n*ss);mat=new THREE.ShaderMaterial({glslVersion:THREE.GLSL3,vertexShader,fragmentShader,uniforms:{da:{value:null},db:{value:null},ca:{value:null},cb:{value:null},gridW:{value:m.width},gridH:{value:m.height},samples:{value:ss},intr:{value:new THREE.Vector4(k.fx,k.fy,k.cx,k.cy)},logRange:{value:new THREE.Vector2(d.log_min,d.log_max)},blend:{value:0},cutoff:{value:Number($('depth').value)},sizeScale:{value:Number($('size').value)},pixelScale:{value:renderer.domElement.height/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2)))}},transparent:false,depthTest:true,depthWrite:true,alphaToCoverage:true});cloud=new THREE.Points(geo,mat);cloud.frustumCulled=false;cloud.position.copy(root.position).multiplyScalar(-1);root.add(cloud);setFrame(0,Math.min(1,m.num_frames-1),0);reset();}
+async function open(file){if(!file)return;const token=++generation;clear();meta=null;zip=null;$('intro').hidden=false;$('message').textContent='Reading asset manifest…';$('play').disabled=$('seek').disabled=true;
+try{if(!renderer.capabilities.isWebGL2)throw Error('WebGL 2 is required');const z=await readZip(file),m=JSON.parse(td.decode(await z.get('sequence.json',1024*1024)));if(token!==generation)return;
+if(m.format!=='lal-depth-sequence-v1')throw Error('This player needs an optimised asset folder.');
+if(!Number.isInteger(m.width)||!Number.isInteger(m.height)||m.width<2||m.height<2||m.width*m.height>1200000||!Number.isInteger(m.num_frames)||m.num_frames<1||m.num_frames>30000||!(m.fps>0&&m.fps<=120)||!m.intrinsics||!(m.intrinsics.fx>0&&m.intrinsics.fy>0)||![m.intrinsics.cx,m.intrinsics.cy,m.depth_encoding?.log_min,m.depth_encoding?.log_max].every(Number.isFinite))throw Error('Invalid sequence metadata');
+zip=z;meta=m;const preload=Math.min(3,m.num_frames);for(let i=0;i<preload;i+=PARALLEL){await Promise.all(Array.from({length:Math.min(PARALLEL,preload-i)},(_,j)=>request(i+j)));if(token!==generation)return;$('message').textContent='Preparing '+Math.min(i+PARALLEL,preload)+' / '+preload+' initial frames…';}
+mount();ready=true;playing=true;t=0;last=0;$('play').textContent='Pause';$('seek').max=m.num_frames-1;$('seek').value=0;$('seek').disabled=$('play').disabled=false;$('intro').hidden=true;fill(0);
+}catch(e){if(token===generation){failed=true;ready=false;$('message').textContent=e.message;}}}
+let selectedFiles=null;
+$('file').onchange=e=>{selectedFiles=Array.from(e.target.files);if(selectedFiles.length)open(selectedFiles);};
+$('tier').onchange=()=>{if(selectedFiles?.length)open(selectedFiles);};
+$('play').onclick=()=>{playing=!playing;$('play').textContent=playing?'Pause':'Play';last=0;};
+$('orbit').onclick=()=>{orbit=!orbit;$('orbit').textContent=orbit?'Orbit on':'Orbit off';};
+$('reset').onclick=reset;$('detail').onchange=()=>{if(mat){const s=Number($('detail').value);mat.uniforms.samples.value=s;geo.setDrawRange(0,meta.width*meta.height*s);}};
+$('size').oninput=()=>{if(mat)mat.uniforms.sizeScale.value=Number($('size').value);};$('depth').oninput=()=>{if(mat)mat.uniforms.cutoff.value=Number($('depth').value);};
+$('seek').oninput=()=>{if(ready){t=Number($('seek').value);last=0;fill(Math.floor(t));}};
+controls.addEventListener('start',()=>dragging=true);controls.addEventListener('end',()=>{dragging=false;orbit=false;$('orbit').textContent='Orbit off';});
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);if(mat)mat.uniforms.pixelScale.value=renderer.domElement.height/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2)));});
+document.addEventListener('visibilitychange',()=>last=0);
+function animate(now){requestAnimationFrame(animate);if(document.hidden)return;const dt=last?Math.min((now-last)/1000,.12):0;last=now;
+if(ready){const n=meta.num_frames,next=playing?(t+dt*meta.fps)%n:t,i=Math.floor(next),j=Math.min(i+1,n-1);const available=cache.has(i)&&cache.has(j);if(available){t=next;setFrame(i,j,j===i?0:t-i);$('seek').value=Math.floor(t);}fill(Math.floor(available?t:next));if(orbit&&!dragging){orbitTime+=dt;root.rotation.y=Math.sin(orbitTime*.22)*.32;}ticks++;if(!stats)stats=now;if(now-stats>=750){$('status').textContent=(t/meta.fps).toFixed(1)+' / '+(n/meta.fps).toFixed(1)+'s · '+Math.round(ticks*1000/(now-stats))+' render fps · '+(meta.width*meta.height).toLocaleString()+' source points · '+(available?'playing':'buffering')+' · '+cache.size+' cached';stats=now;ticks=0;}}
+controls.update();renderer.render(scene,camera);}
+requestAnimationFrame(animate);
+</script></body></html>

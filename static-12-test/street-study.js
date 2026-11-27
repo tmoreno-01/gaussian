@@ -470,6 +470,15 @@
         particleRevealEnabled: false,
         enableThreeShaderIntegration: false
       });
+      if (item.id === "398fd53f-aa2d-4850-831f-a9ef8676a8b5") {
+        // Padded bounds of the statue and pedestal in the decoded capture's local coordinates.
+        // Unlabelled splats inside this volume also belong to the residual silhouette.
+        splat.setShaderHooks({vertexShaderHooks:{getSplatColor:`(vec4 color, vec3 center, uint semantics) {
+          if (all(greaterThanEqual(center, vec3(-1.55,-1.38,-1.40))) &&
+              all(lessThanEqual(center, vec3(1.22,1.98,1.38)))) return vec4(0.0);
+          return color;
+        }`}});
+      }
       setCaptureFilter(splat,item.id);
       state.splats.push(splat);
       let settled = false;

@@ -42,7 +42,12 @@
   const modes=["broken orbit","dense cluster","wide constellation","layered islands"];
   const mode=modes[Math.floor(random()*modes.length)],phase=between(0,Math.PI*2),orbitSpeed=.035;
   const layoutTilt=0;
-  const roles=Array.from({length:targetCount},(_,i)=>i<2?between(2.35,3.05):i<5?between(1.45,2.20):between(.90,1.45));
+  // Vary the overall composition scale too, rather than always having the
+  // same size distribution. Keep a reasonable floor for secondary pieces.
+  const scaleMood=between(1.00,1.22);
+  const roles=Array.from({length:targetCount},(_,i)=>
+    (i<2?between(2.55,3.65):i<5?between(1.65,2.90):between(1.12,1.95))*scaleMood);
+  
   const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
   shuffle(roles);
   const order=shuffle(Array.from({length:targetCount},(_,i)=>i));
@@ -63,8 +68,8 @@
       return random()<.16?between(1.9,2.6):Math.min(1.65,role*between(.48,.78));
     }
     // The alley's narrow geometry needs a substantial footprint.
-    if(id==="f0137e7f")return Math.max(2.05,role*between(1.20,1.48));
-    return role*between(.90,1.12);
+    if(id==="f0137e7f")return Math.min(4.75,Math.max(2.15,role*between(1.15,1.40)));
+    return Math.min(4.65,role*between(.95,1.18));
   }
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   let active = null;

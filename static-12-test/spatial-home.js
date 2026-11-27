@@ -44,9 +44,9 @@
   const layoutTilt=0;
   // Vary the overall composition scale too, rather than always having the
   // same size distribution. Keep a reasonable floor for secondary pieces.
-  const scaleMood=between(1.00,1.22);
+  const scaleMood=between(1.00,1.30);
   const roles=Array.from({length:targetCount},(_,i)=>
-    (i<2?between(2.55,3.65):i<5?between(1.65,2.90):between(1.12,1.95))*scaleMood);
+    (i<2?between(2.75,4.05):i<5?between(2.05,3.35):between(1.45,2.45))*scaleMood);
   
   const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
   shuffle(roles);
@@ -68,8 +68,8 @@
       return random()<.16?between(1.9,2.6):Math.min(1.65,role*between(.48,.78));
     }
     // The alley's narrow geometry needs a substantial footprint.
-    if(id==="f0137e7f")return Math.min(4.75,Math.max(2.15,role*between(1.15,1.40)));
-    return Math.min(4.65,role*between(.95,1.18));
+    if(id==="f0137e7f")return Math.min(5.25,Math.max(2.40,role*between(1.12,1.38)));
+    return Math.min(5.35,role*between(.96,1.20));
   }
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   let active = null;

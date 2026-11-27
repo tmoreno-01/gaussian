@@ -23,318 +23,372 @@ header{position:fixed;inset:0 0 auto;z-index:10;display:flex;justify-content:spa
 .nav a,.nav button{font:inherit;font-size:12px;color:var(--fg);text-decoration:none;background:transparent;border:0;padding:0;cursor:pointer;opacity:.88}
 .nav a:hover,.nav button:hover{opacity:1}
 .test-tag{position:fixed;top:78px;right:34px;z-index:10;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
-.bottom{position:fixed;z-index:10;left:34px;right:34px;bottom:26px;display:flex;justify-content:space-between;align-items:flex-end;gap:22px;pointer-events:none}
-.caption{max-width:430px}
-.eyebrow{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:9px}
-.caption h1{font-size:clamp(22px,3.1vw,38px);font-weight:400;letter-spacing:-.055em;line-height:1;margin:0 0 9px}
-.caption p{font-size:11px;line-height:1.55;color:var(--muted);max-width:370px;margin:0}
-.loader{pointer-events:auto;width:min(390px,47vw);padding:13px 15px 12px;border:1px solid var(--line);background:rgba(4,4,4,.48);backdrop-filter:blur(12px)}
-.loader-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
-.loader-title{font-size:11px;letter-spacing:.02em}
-.depth-tag{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#d7d7d7}
-.loader p{font-size:10px;line-height:1.45;color:var(--muted);margin:0 0 10px}
-.load-button{display:inline-flex;align-items:center;justify-content:center;min-height:31px;padding:0 12px;border:1px solid rgba(255,255,255,.42);background:transparent;color:var(--fg);font:inherit;font-size:10px;cursor:pointer;transition:background .2s,border-color .2s}
+.loader{position:fixed;z-index:10;top:82px;right:34px;width:310px;padding:13px 15px 12px;border:1px solid var(--line);background:rgba(4,4,4,.55);backdrop-filter:blur(12px)}
+.loader-heading{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin-bottom:11px}
+.slot{display:grid;grid-template-columns:1fr auto;gap:5px 10px;align-items:center;padding:9px 0;border-top:1px solid rgba(255,255,255,.12)}
+.slot-name{font-size:11px}.slot-position{font-size:9px;color:var(--muted);margin-top:3px}
+.load-button{display:inline-flex;align-items:center;justify-content:center;min-height:30px;padding:0 11px;border:1px solid rgba(255,255,255,.42);background:transparent;color:var(--fg);font:inherit;font-size:10px;cursor:pointer}
 .load-button:hover{background:rgba(255,255,255,.09);border-color:#fff}
-#zipInput{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
-#loadStatus{font-size:10px;color:var(--muted);margin-top:8px;min-height:14px}
+.slot-status{grid-column:1/-1;font-size:9px;line-height:1.4;color:var(--muted);min-height:12px;overflow-wrap:anywhere}
+input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+#globalStatus{font-size:9px;color:var(--muted);line-height:1.45;margin-top:7px}
+.bottom{position:fixed;z-index:10;left:34px;bottom:28px;pointer-events:none}
+.eyebrow{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:9px}
+.bottom h1{font-size:clamp(24px,3.2vw,40px);font-weight:400;letter-spacing:-.055em;line-height:1;margin:0 0 8px}
+.bottom p{font-size:10px;line-height:1.5;color:var(--muted);max-width:360px;margin:0}
 @media(max-width:760px){
- header{padding:18px 18px}.nav{gap:15px}.nav a{font-size:11px}.test-tag{top:58px;right:18px;font-size:9px}
- .bottom{left:18px;right:18px;bottom:16px;display:block}
- .caption{max-width:100%;margin-bottom:12px}.caption h1{font-size:25px}.caption p{font-size:10px;max-width:320px}
- .loader{width:100%;padding:10px 12px}.loader p{margin-bottom:8px}
+ header{padding:18px}.nav{gap:15px}.nav a,.nav button{font-size:11px}
+ .test-tag{top:58px;right:18px;font-size:8px}
+ .loader{top:83px;left:18px;right:18px;width:auto;padding:9px 12px}
+ .loader-heading{margin-bottom:5px}.slot{padding:7px 0}
+ .bottom{left:18px;bottom:17px}.bottom h1{font-size:25px}.bottom p{max-width:280px;font-size:9px}
 }
 </style>
 <script type="importmap">
 {
-  "imports": {
-    "three": "https://unpkg.com/three@0.157.0/build/three.module.js",
-    "three/addons/": "https://unpkg.com/three@0.157.0/examples/jsm/",
-    "@lumaai/luma-web": "https://unpkg.com/@lumaai/luma-web@0.2.0/dist/library/luma-web.module.js",
-    "@zip.js/zip.js": "https://cdn.jsdelivr.net/npm/@zip.js/zip.js@2.7.57/index.js"
-  }
+ "imports":{
+  "three":"https://unpkg.com/three@0.157.0/build/three.module.js",
+  "three/addons/":"https://unpkg.com/three@0.157.0/examples/jsm/",
+  "@lumaai/luma-web":"https://unpkg.com/@lumaai/luma-web@0.2.0/dist/library/luma-web.module.js"
+ }
 }
 </script>
 </head>
 <body>
 <div id="stage"></div><div class="vignette"></div>
 <header>
-  <a class="brand" href="./"><span class="mark"></span><span class="brand-name">lifeafterlogic</span></a>
-  <nav class="nav"><a href="#experiments">experiments</a><a href="#about">about</a><button id="pause">pause</button></nav>
+ <a class="brand" href="./"><span class="mark"></span><span class="brand-name">lifeafterlogic</span></a>
+ <nav class="nav"><a href="#experiments">experiments</a><a href="#about">about</a><button id="pause">pause</button></nav>
 </header>
 <div class="test-tag">homepage study / not live</div>
+<div class="loader">
+ <div class="loader-heading">Animated foreground captures</div>
+ <div class="slot">
+  <div><div class="slot-name">Capture 01</div><div class="slot-position">Foreground / left</div></div>
+  <label class="load-button" for="zipA">Choose ZIP</label><input id="zipA" type="file" accept=".zip,application/zip">
+  <div class="slot-status" id="statusA">Waiting for a full_vda ZIP</div>
+ </div>
+ <div class="slot">
+  <div><div class="slot-name">Capture 02</div><div class="slot-position">Foreground / right</div></div>
+  <label class="load-button" for="zipB">Choose ZIP</label><input id="zipB" type="file" accept=".zip,application/zip">
+  <div class="slot-status" id="statusB">Waiting for a full_vda ZIP</div>
+ </div>
+ <div id="globalStatus">Choose either ZIP independently. You can add the second one later.</div>
+</div>
 <div class="bottom">
-  <div class="caption">
-    <div class="eyebrow">Spatial study / 2026</div>
-    <h1>Matter of Perspective</h1>
-    <p>Six existing static captures with two moving reconstructions, brought together in one continuous spatial composition.</p>
-  </div>
-  <div class="loader">
-    <div class="loader-top"><span class="loader-title">Add the animated captures</span><span class="depth-tag">Depth / max</span></div>
-    <p>Select <b>abandoned_03_full_vda.zip</b> and <b>bucharest_full_vda.zip</b>. They are read locally; the original archives are not uploaded or recompressed.</p>
-    <label class="load-button" for="zipInput">Choose both full_vda ZIPs</label>
-    <input id="zipInput" type="file" accept=".zip,application/zip" multiple>
-    <div id="loadStatus">Loading the six static homepage captures…</div>
-  </div>
+ <div class="eyebrow">Spatial study / 2026</div>
+ <h1>Matter of Perspective</h1>
+ <p>Six original static captures, with two larger moving depth reconstructions in the foreground.</p>
 </div>
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { LumaSplatsThree } from '@lumaai/luma-web';
-import { ZipReader, BlobReader, Uint8ArrayWriter, TextWriter } from '@zip.js/zip.js';
+
+/*
+  PRODUCTION: add the two public Cloudflare R2 object URLs below.
+  The same range reader works with local ZIPs for testing and public R2 ZIPs
+  for the real site. R2 must allow GET/HEAD from lifeafterlogic.com and expose
+  Content-Range and Content-Length. Frames are fetched on demand; the whole ZIP
+  is never downloaded at once.
+*/
+const REMOTE_SEQUENCE_URLS = ["",""];
 
 (async function(){
-  const stage=document.getElementById('stage');
-  const status=document.getElementById('loadStatus');
-  const touch=matchMedia('(pointer: coarse)').matches;
-  const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
-  const renderer=new THREE.WebGLRenderer({antialias:false,alpha:false,powerPreference:'high-performance'});
-  renderer.setPixelRatio(Math.min(devicePixelRatio||1,touch?.9:1.35));
-  renderer.setSize(innerWidth,innerHeight);
-  renderer.outputColorSpace=THREE.SRGBColorSpace;
-  renderer.setClearColor(0x030303,1);
-  renderer.domElement.setAttribute('aria-label','Interactive Gaussian splat scene. Drag to orbit and scroll to zoom.');
-  stage.appendChild(renderer.domElement);
+ const stage=document.getElementById('stage');
+ const touch=matchMedia('(pointer: coarse)').matches;
+ const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
+ const renderer=new THREE.WebGLRenderer({antialias:false,alpha:false,powerPreference:'high-performance'});
+ renderer.setPixelRatio(Math.min(devicePixelRatio||1,touch?1.05:1.35));
+ renderer.setSize(innerWidth,innerHeight);
+ renderer.outputColorSpace=THREE.SRGBColorSpace;
+ renderer.setClearColor(0x030303,1);
+ stage.appendChild(renderer.domElement);
 
-  const scene=new THREE.Scene();
-  scene.background=new THREE.Color(0x030303);
-  const camera=new THREE.PerspectiveCamera(43,innerWidth/innerHeight,.05,120);
-  camera.position.set(2.55,1.55,9.2);camera.lookAt(0,0,0);
-  const controls=new OrbitControls(camera,renderer.domElement);
-  controls.target.set(0,0,0);controls.enableDamping=true;controls.dampingFactor=touch?.13:.105;
-  controls.enablePan=true;controls.minDistance=5.2;controls.maxDistance=15.5;
-  controls.minPolarAngle=.35;controls.maxPolarAngle=Math.PI-.35;
-  controls.rotateSpeed=.48;controls.zoomSpeed=.62;controls.panSpeed=.45;
-  const orbit=new THREE.Group();scene.add(orbit);
+ const scene=new THREE.Scene();scene.background=new THREE.Color(0x030303);
+ const camera=new THREE.PerspectiveCamera(43,innerWidth/innerHeight,.05,140);
+ camera.position.set(0,1.35,10.5);camera.lookAt(0,0,0);
+ const controls=new OrbitControls(camera,renderer.domElement);
+ controls.target.set(0,0,0);controls.enableDamping=true;controls.dampingFactor=touch?.13:.105;
+ controls.enablePan=true;controls.minDistance=5.2;controls.maxDistance=18;
+ controls.minPolarAngle=.35;controls.maxPolarAngle=Math.PI-.35;
+ controls.rotateSpeed=.48;controls.zoomSpeed=.62;controls.panSpeed=.45;
+ const orbit=new THREE.Group();scene.add(orbit);
+ const captures=[
+  {id:'3582f3b0-565e-443f-9165-3571c0721fbc',scale:.62,y:-.14,tilt:-.035},
+  {id:'1a487b86-38a7-466d-856b-5d9ad2f84fab',scale:.64,y:.22,tilt:.045},
+  {id:'b101171b-cf5f-4669-ab44-d9fa39e69898',scale:.60,y:-.28,tilt:.025},
+  {id:'9c6e8bac-3b79-4f39-a605-58999d33c33c',scale:.72,y:.30,tilt:-.055},
+  {id:'94f2efd7-f65d-4b7f-b455-536e95643bad',scale:.60,y:-.10,tilt:.035},
+  {id:'3adabd81-8ef0-4257-92cb-a2929ef8aa8a',scale:.68,y:.16,tilt:-.025}
+ ];
+ const staticSplats=[];
+ let staticDone=0,staticFailed=0,staticNext=0,staticFlight=0;
+ const animated=[null,null],slotTokens=[0,0];
+ let playing=true,lastInteraction=performance.now(),lastTick=0;
+ const concurrency=touch?1:2;
+ const statusEls=[document.getElementById('statusA'),document.getElementById('statusB')];
+ const globalStatus=document.getElementById('globalStatus');
 
-  const captures=[
-    {id:'3582f3b0-565e-443f-9165-3571c0721fbc',scale:.62,y:-.14,tilt:-.035},
-    {id:'1a487b86-38a7-466d-856b-5d9ad2f84fab',scale:.64,y:.22,tilt:.045},
-    {id:'b101171b-cf5f-4669-ab44-d9fa39e69898',scale:.60,y:-.28,tilt:.025},
-    {id:'9c6e8bac-3b79-4f39-a605-58999d33c33c',scale:.72,y:.30,tilt:-.055},
-    {id:'94f2efd7-f65d-4b7f-b455-536e95643bad',scale:.60,y:-.10,tilt:.035},
-    {id:'3adabd81-8ef0-4257-92cb-a2929ef8aa8a',scale:.68,y:.16,tilt:-.025}
-  ];
-  let staticDone=0,staticFailed=0,staticNext=0,staticFlight=0;
-  const animated=[];
-  let playing=true,lastInteraction=performance.now(),lastTick=0;
-  const concurrency=touch?1:2;
-  function setStatus(extra){
-    const base=staticDone<captures.length?'Loading static captures '+staticDone+'/'+captures.length:'Six static captures loaded';
-    status.textContent=extra||(base+(animated.length?' · '+animated.length+' animated loaded':' · choose the two ZIPs'));
+ function addStatic(item,index){
+  const angle=index/captures.length*Math.PI*2,holder=new THREE.Group();
+  holder.position.set(Math.sin(angle)*4.25,item.y,Math.cos(angle)*4.25);
+  holder.rotation.y=angle+Math.PI;holder.rotation.x=item.tilt;
+  holder.rotation.z=(index%2?1:-1)*.025;holder.scale.setScalar(item.scale);orbit.add(holder);
+  const splat=new LumaSplatsThree({source:'https://lumalabs.ai/capture/'+item.id,loadingAnimationEnabled:false,particleRevealEnabled:false,enableThreeShaderIntegration:false});
+  staticSplats.push(splat);
+  let settled=false;
+  const finish=error=>{if(settled)return;settled=true;staticFlight--;staticDone++;if(error)staticFailed++;loadStaticQueue();};
+  splat.onLoad=()=>finish(null);splat.onError=e=>{console.warn('Static capture failed',item.id,e);finish(e||new Error('capture failed'));};
+  holder.add(splat);
+ }
+ function loadStaticQueue(){
+  while(staticFlight<concurrency&&staticNext<captures.length){
+   const i=staticNext++;staticFlight++;
+   try{addStatic(captures[i],i);}catch(e){staticFlight--;staticDone++;staticFailed++;console.warn(e);}
   }
-  function finishStatic(error){
-    staticFlight=Math.max(0,staticFlight-1);staticDone++;
-    if(error)staticFailed++;
-    setStatus(staticDone===captures.length?(staticFailed?'Static captures loaded · '+staticFailed+' unavailable':'Static scene ready · add animated ZIPs'):null);
-    loadStaticQueue();
-  }
-  function addStatic(item,index){
-    const angle=index/captures.length*Math.PI*2;
-    const holder=new THREE.Group();
-    holder.position.set(Math.sin(angle)*4.25,item.y,Math.cos(angle)*4.25);
-    holder.rotation.y=angle+Math.PI;holder.rotation.x=item.tilt;
-    holder.rotation.z=(index%2?1:-1)*.025;holder.scale.setScalar(item.scale);
-    orbit.add(holder);
-    const splat=new LumaSplatsThree({
-      source:'https://lumalabs.ai/capture/'+item.id,
-      loadingAnimationEnabled:false,particleRevealEnabled:false,enableThreeShaderIntegration:false
-    });
-    let settled=false;
-    const settle=error=>{if(settled)return;settled=true;finishStatic(error);};
-    splat.onLoad=()=>settle(null);
-    splat.onError=error=>{console.warn('Static capture failed',item.id,error);settle(error||new Error('capture failed'));};
-    holder.add(splat);
-  }
-  function loadStaticQueue(){
-    while(staticFlight<concurrency&&staticNext<captures.length){
-      const index=staticNext++;staticFlight++;
-      try{addStatic(captures[index],index);}catch(e){finishStatic(e);}
-    }
-  }
-  loadStaticQueue();
+  if(staticDone===captures.length)globalStatus.textContent='Static scene ready. Load either animated ZIP, or both.';
+ }
+ loadStaticQueue();
 
-  const vertexShader=[
-    'uniform sampler2D depthTex;','uniform sampler2D colorTex;','uniform int gridW;',
-    'uniform float fx;','uniform float fy;','uniform float cx;','uniform float cy;',
-    'uniform float logMin;','uniform float logMax;','uniform float pointSize;','out vec3 vColor;',
-    'void main(){','int id=gl_VertexID;','int x=id%gridW;','int y=id/gridW;','ivec2 uv=ivec2(x,y);',
-    'vec2 db=texelFetch(depthTex,uv,0).rg;',
-    'float q=floor(db.r*255.0+0.5)+256.0*floor(db.g*255.0+0.5);',
-    'float z=exp(logMin+(q/65535.0)*(logMax-logMin));',
-    'vec3 p=vec3((float(x)-cx)/fx*z,-(float(y)-cy)/fy*z,-z);',
-    'vec4 mv=modelViewMatrix*vec4(p,1.0);','gl_Position=projectionMatrix*mv;',
-    'gl_PointSize=pointSize;','vColor=texelFetch(colorTex,uv,0).rgb;','}'
-  ].join('\n');
-  const fragmentShader=[
-    'in vec3 vColor;','out vec4 outColor;','void main(){',
-    'float r=length(gl_PointCoord-vec2(0.5));','if(r>0.5) discard;',
-    'float a=1.0-smoothstep(0.38,0.5,r);','outColor=vec4(vColor,a);','}'
-  ].join('\n');
+ async function remoteRangeFile(url){
+  let size=0;
+  try{const head=await fetch(url,{method:'HEAD',mode:'cors'});if(head.ok)size=Number(head.headers.get('content-length'))||0;}catch(_){}
+  if(!size){
+   const probe=await fetch(url,{headers:{Range:'bytes=0-0'},mode:'cors'});
+   const range=probe.headers.get('content-range');
+   if(probe.status!==206||!range)throw new Error('R2 needs byte-range CORS enabled and Content-Range exposed.');
+   size=Number(range.split('/').pop());
+  }
+  if(!Number.isFinite(size)||size<100)throw new Error('Could not read the R2 ZIP size.');
+  return {
+   size,
+   slice(start,end){return {async arrayBuffer(){
+    const response=await fetch(url,{headers:{Range:'bytes='+start+'-'+(end-1)},mode:'cors'});
+    if(response.status!==206)throw new Error('R2 did not return HTTP 206 for a byte-range request.');
+    return response.arrayBuffer();
+   }};}
+  };
+ }
 
-  function dataTexture(data,w,h,format){
-    const t=new THREE.DataTexture(data,w,h,format,THREE.UnsignedByteType);
-    t.minFilter=THREE.NearestFilter;t.magFilter=THREE.NearestFilter;
-    t.generateMipmaps=false;t.unpackAlignment=1;t.needsUpdate=true;return t;
+ const td=new TextDecoder();
+ async function readZip(file){
+  const tailStart=Math.max(0,file.size-65557);
+  const tail=new Uint8Array(await file.slice(tailStart,file.size).arrayBuffer());
+  const v=new DataView(tail.buffer,tail.byteOffset,tail.byteLength);
+  let end=-1;
+  for(let i=tail.length-22;i>=0;i--){
+   if(v.getUint32(i,true)===0x06054b50&&i+22+v.getUint16(i+20,true)===tail.length){end=i;break;}
   }
-  function sourceIndex(state,outFrame){
-    return Math.min(state.meta.num_frames-1,Math.round(outFrame*state.meta.fps/state.outFps));
+  if(end<0)throw new Error('ZIP directory not found. Check that this is the full_vda ZIP.');
+  const disk=v.getUint16(end+4,true),startDisk=v.getUint16(end+6,true);
+  const count=v.getUint16(end+10,true),length=v.getUint32(end+12,true),offset=v.getUint32(end+16,true);
+  if(disk||startDisk||count===65535||length===0xffffffff||offset===0xffffffff)throw new Error('ZIP64 or split archives are not supported by this web test. Export a smaller full_vda ZIP.');
+  if(offset+length>file.size||length>32*1024*1024)throw new Error('Invalid ZIP directory.');
+  const dir=new Uint8Array(await file.slice(offset,offset+length).arrayBuffer());
+  const dv=new DataView(dir.buffer,dir.byteOffset,dir.byteLength),entries=new Map();let p=0;
+  for(let i=0;i<count;i++){
+   if(p+46>dir.length||dv.getUint32(p,true)!==0x02014b50)throw new Error('Invalid ZIP directory entry.');
+   const nl=dv.getUint16(p+28,true),xl=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true);
+   const name=td.decode(dir.subarray(p+46,p+46+nl));
+   entries.set(name,{method:dv.getUint16(p+10,true),flags:dv.getUint16(p+8,true),size:dv.getUint32(p+24,true),compressed:dv.getUint32(p+20,true),offset:dv.getUint32(p+42,true)});
+   p+=46+nl+xl+cl;
   }
-  async function decodeFrame(state,index){
-    const id=String(index).padStart(6,'0');
-    const depthEntry=state.entries.get(state.prefix+'depth/'+id+'.bin');
-    const colorEntry=state.entries.get(state.prefix+'color/'+id+'.jpg');
-    if(!depthEntry||!colorEntry)throw new Error('Missing frame '+id);
-    const [depthBytes,colorBytes]=await Promise.all([
-      depthEntry.getData(new Uint8ArrayWriter()),colorEntry.getData(new Uint8ArrayWriter())
-    ]);
-    const sw=state.meta.width,sh=state.meta.height,w=state.width,h=state.height;
-    if(depthBytes.byteLength!==sw*sh*2)throw new Error('Depth frame has unexpected dimensions');
-    const dv=new DataView(depthBytes.buffer,depthBytes.byteOffset,depthBytes.byteLength);
-    const q=new Uint16Array(w*h);
-    for(let y=0;y<h;y++){
-      const sy=Math.min(sh-1,Math.floor((y+.5)*sh/h));
-      for(let x=0;x<w;x++){
-        const sx=Math.min(sw-1,Math.floor((x+.5)*sw/w));
-        q[y*w+x]=dv.getUint16((sy*sw+sx)*2,true);
-      }
+  return {async get(name,limit){
+   const e=entries.get(name);if(!e)throw new Error('Missing '+name);
+   if(e.size>limit||e.flags&1)throw new Error('Invalid ZIP entry '+name);
+   const h=new DataView(await file.slice(e.offset,e.offset+30).arrayBuffer());
+   if(h.getUint32(0,true)!==0x04034b50)throw new Error('Invalid ZIP local header.');
+   const start=e.offset+30+h.getUint16(26,true)+h.getUint16(28,true);
+   if(start+e.compressed>file.size)throw new Error('Truncated ZIP entry '+name);
+   const blob=file.slice(start,start+e.compressed);let bytes;
+   if(e.method===0)bytes=await blob.arrayBuffer();
+   else if(e.method===8)bytes=await new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer();
+   else throw new Error('Unsupported ZIP compression method.');
+   if(bytes.byteLength!==e.size)throw new Error('Incorrect entry size '+name);
+   return new Uint8Array(bytes);
+  }};
+ }
+
+ const vertexShader=[
+  'uniform sampler2D depthTex;','uniform sampler2D colorTex;','uniform int gridW;','uniform int gridH;','uniform int samples;',
+  'uniform vec4 intr;','uniform vec2 logRange;','uniform float cutoff;','uniform float sizeScale;','uniform float pixelScale;',
+  'out vec3 vColor;','flat out float valid;','struct S{vec3 p;vec3 c;float z;};',
+  'float unpackZ(vec2 b){float q=dot(floor(b*255.0+0.5),vec2(1.0,256.0));return exp(mix(logRange.x,logRange.y,q/65535.0));}',
+  'S readP(ivec2 xy){vec2 d=texelFetch(depthTex,xy,0).rg;vec3 c=texelFetch(colorTex,xy,0).rgb;float z=unpackZ(d);return S(vec3((float(xy.x)-intr.z)/intr.x*z,-(float(xy.y)-intr.w)/intr.y*z,-z),c,z);}',
+  'bool joined(S a,S b){return a.z<cutoff&&b.z<cutoff&&abs(a.z-b.z)<0.035*min(a.z,b.z);}',
+  'S mid(S a,S b){return S(mix(a.p,b.p,0.5),mix(a.c,b.c,0.5),mix(a.z,b.z,0.5));}',
+  'void main(){int id=gl_VertexID/samples,sub=gl_VertexID%samples;ivec2 xy=ivec2(id%gridW,id/gridW);S p=readP(xy);valid=p.z<cutoff?1.0:0.0;',
+  'if(sub==1){if(xy.x+1>=gridW)valid=0.0;else{S r=readP(xy+ivec2(1,0));if(joined(p,r))p=mid(p,r);else valid=0.0;}}',
+  'if(sub==2){if(xy.y+1>=gridH)valid=0.0;else{S d=readP(xy+ivec2(0,1));if(joined(p,d))p=mid(p,d);else valid=0.0;}}',
+  'if(sub==3){if(xy.x+1>=gridW||xy.y+1>=gridH)valid=0.0;else{S r=readP(xy+ivec2(1,0)),d=readP(xy+ivec2(0,1)),q=readP(xy+ivec2(1,1));if(joined(p,r)&&joined(p,d)&&joined(r,q)&&joined(d,q))p=mid(mid(p,r),mid(d,q));else valid=0.0;}}',
+  'vec4 mv=modelViewMatrix*vec4(p.p,1.0);gl_Position=valid>0.5?projectionMatrix*mv:vec4(2.0,2.0,2.0,1.0);',
+  'gl_PointSize=clamp(p.z/intr.x*pixelScale/max(0.01,-mv.z)*sizeScale*(samples==4?1.05:1.8),1.0,10.0);vColor=p.c;}'
+ ].join('\n');
+ const fragmentShader=[
+  'in vec3 vColor;','flat in float valid;','out vec4 outColor;',
+  'void main(){if(valid<0.5)discard;vec2 q=(gl_PointCoord-0.5)*2.0;float r=dot(q,q);if(r>1.0)discard;outColor=vec4(vColor,1.0-smoothstep(0.6,1.0,r));}'
+ ].join('\n');
+
+ function makeTexture(data,w,h,format){
+  const t=new THREE.DataTexture(data,w,h,format,THREE.UnsignedByteType);
+  t.minFilter=THREE.NearestFilter;t.magFilter=THREE.NearestFilter;t.generateMipmaps=false;t.unpackAlignment=1;t.needsUpdate=true;return t;
+ }
+ function sourceIndex(state,outFrame){return Math.min(state.meta.num_frames-1,Math.round(outFrame*state.meta.fps/state.outFps));}
+ async function decodeFrame(state,index){
+  const name=String(index).padStart(6,'0');
+  const [depthBytes,colorBytes]=await Promise.all([
+   state.zip.get('depth/'+name+'.bin',state.meta.width*state.meta.height*2),
+   state.zip.get('color/'+name+'.jpg',8*1024*1024)
+  ]);
+  const sw=state.meta.width,sh=state.meta.height,w=state.width,h=state.height;
+  if(depthBytes.byteLength!==sw*sh*2)throw new Error('Unexpected depth frame dimensions.');
+  const dv=new DataView(depthBytes.buffer,depthBytes.byteOffset,depthBytes.byteLength),q=new Uint16Array(w*h);
+  for(let y=0;y<h;y++){
+   const sy=Math.min(sh-1,Math.floor((y+0.5)*sh/h));
+   for(let x=0;x<w;x++){
+    const sx=Math.min(sw-1,Math.floor((x+0.5)*sw/w));
+    q[y*w+x]=dv.getUint16((sy*sw+sx)*2,true);
+   }
+  }
+  const bitmap=await createImageBitmap(new Blob([colorBytes],{type:'image/jpeg'}));
+  const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+  const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(bitmap,0,0,w,h);bitmap.close();
+  return {q,rgba:new Uint8Array(ctx.getImageData(0,0,w,h).data)};
+ }
+ function calculateBounds(state,frame){
+  const m=state.meta,lo=[Infinity,Infinity,Infinity],hi=[-Infinity,-Infinity,-Infinity];
+  for(let y=0;y<state.height;y+=4)for(let x=0;x<state.width;x+=4){
+   const q=frame.q[y*state.width+x];
+   const z=Math.exp(m.depth_encoding.log_min+(q/65535)*(m.depth_encoding.log_max-m.depth_encoding.log_min));
+   const p=[(x-state.cx)/state.fx*z,-(y-state.cy)/state.fy*z,-z];
+   for(let a=0;a<3;a++){lo[a]=Math.min(lo[a],p[a]);hi[a]=Math.max(hi[a],p[a]);}
+  }
+  if(!lo.every(Number.isFinite))throw new Error('Could not calculate point-cloud bounds.');
+  const center=lo.map((v,i)=>(v+hi[i])*0.5),span=Math.max(0.001,...hi.map((v,i)=>v-lo[i]));
+  return {center,scale:2.35/span};
+ }
+ function applyFrame(state,frame,index){
+  state.depthTex.image.data=new Uint8Array(frame.q.buffer,frame.q.byteOffset,frame.q.byteLength);
+  state.colorTex.image.data=frame.rgba;state.depthTex.needsUpdate=true;state.colorTex.needsUpdate=true;state.currentSource=index;
+ }
+ function disposeSequence(slot){
+  slotTokens[slot]++;
+  const state=animated[slot];if(!state)return;
+  state.disposed=true;orbit.remove(state.holder);
+  state.depthTex.dispose();state.colorTex.dispose();state.material.dispose();state.geometry.dispose();
+  animated[slot]=null;
+ }
+ async function loadSequence(source,slot){
+  disposeSequence(slot);const token=slotTokens[slot],status=statusEls[slot];
+  status.textContent=typeof source==='string'?'Connecting to R2…':'Reading ZIP…';
+  try{
+   const file=typeof source==='string'?await remoteRangeFile(source):source;
+   const zip=await readZip(file);
+   const meta=JSON.parse(td.decode(await zip.get('sequence.json',1024*1024)));
+   if(meta.format!=='lal-depth-sequence-v1')throw new Error('This is not a full_vda ZIP. Use the compact depth ZIP, not a PLY preview.');
+   if(!Number.isInteger(meta.width)||!Number.isInteger(meta.height)||!Number.isInteger(meta.num_frames)||meta.num_frames<1||!(meta.fps>0)||!meta.intrinsics||!meta.depth_encoding)throw new Error('The sequence metadata is incomplete.');
+   const width=Math.min(512,meta.width),height=Math.max(2,Math.round(meta.height*width/meta.width));
+   const state={slot,zip,meta,width,height,outFps:Math.min(18,meta.fps),outFrames:Math.max(1,Math.round(meta.num_frames/meta.fps*Math.min(18,meta.fps))),clock:0,currentSource:-1,frames:new Map(),pending:new Map(),disposed:false};
+   const sx=width/meta.width,sy=height/meta.height;
+   state.fx=meta.intrinsics.fx*sx;state.fy=meta.intrinsics.fy*sy;
+   state.cx=(meta.intrinsics.cx+0.5)*sx-0.5;state.cy=(meta.intrinsics.cy+0.5)*sy-0.5;
+   status.textContent='Decoding first frame…';
+   const first=await decodeFrame(state,0);
+   if(token!==slotTokens[slot])return;
+   const bounds=calculateBounds(state,first);
+   const samples=touch?1:4;
+   const depthTex=makeTexture(new Uint8Array(first.q.buffer),width,height,THREE.RGFormat);
+   const colorTex=makeTexture(first.rgba,width,height,THREE.RGBAFormat);
+   colorTex.colorSpace=THREE.SRGBColorSpace;
+   const material=new THREE.ShaderMaterial({
+    glslVersion:THREE.GLSL3,vertexShader,fragmentShader,transparent:false,depthTest:true,depthWrite:true,alphaToCoverage:true,
+    uniforms:{
+     depthTex:{value:depthTex},colorTex:{value:colorTex},gridW:{value:width},gridH:{value:height},samples:{value:samples},
+     intr:{value:new THREE.Vector4(state.fx,state.fy,state.cx,state.cy)},
+     logRange:{value:new THREE.Vector2(meta.depth_encoding.log_min,meta.depth_encoding.log_max)},
+     cutoff:{value:12},sizeScale:{value:1.25},pixelScale:{value:renderer.domElement.height/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2)))}
     }
-    const bitmap=await createImageBitmap(new Blob([colorBytes],{type:'image/jpeg'}));
-    const c=document.createElement('canvas');c.width=w;c.height=h;
-    const ctx=c.getContext('2d',{willReadFrequently:true});
-    ctx.drawImage(bitmap,0,0,w,h);bitmap.close();
-    const rgba=new Uint8Array(ctx.getImageData(0,0,w,h).data);
-    return {q,rgba};
+   });
+   const geometry=new THREE.BufferGeometry();
+   geometry.setAttribute('position',new THREE.BufferAttribute(new Float32Array(width*height*samples*3),3));
+   geometry.setDrawRange(0,width*height*samples);
+   const cloud=new THREE.Points(geometry,material);cloud.frustumCulled=false;
+   cloud.position.set(-bounds.center[0]*bounds.scale,-bounds.center[1]*bounds.scale,-bounds.center[2]*bounds.scale);
+   cloud.scale.setScalar(bounds.scale);
+   const angle=slot===0?-.82:.82,radius=2.7;
+   const holder=new THREE.Group();
+   holder.position.set(Math.sin(angle)*radius,slot===0?-.12:.12,Math.cos(angle)*radius);
+   holder.rotation.y=angle+Math.PI;holder.rotation.x=slot===0?-.02:.02;
+   holder.rotation.z=slot===0?-.018:.018;holder.scale.setScalar(1.45);
+   holder.add(cloud);orbit.add(holder);
+   Object.assign(state,{holder,cloud,geometry,material,depthTex,colorTex,samples});
+   state.frames.set(0,first);animated[slot]=state;
+   status.textContent=meta.source+' · '+meta.num_frames+' frames · '+meta.fps+' fps';
+   globalStatus.textContent='Animated foreground capture '+(slot+1)+' ready. Add the other sequence whenever you like.';
+   prefetch(state);
+  }catch(error){
+   if(token===slotTokens[slot]){console.error(error);status.textContent='Could not load: '+error.message;globalStatus.textContent='Check the ZIP format or R2 range/CORS settings.';}
   }
-  function calculateBounds(state,frame){
-    const m=state.meta,fx=state.fx,fy=state.fy,cx=state.cx,cy=state.cy;
-    const lo=[Infinity,Infinity,Infinity],hi=[-Infinity,-Infinity,-Infinity];
-    for(let y=0;y<state.height;y+=4)for(let x=0;x<state.width;x+=4){
-      const q=frame.q[y*state.width+x];
-      const z=Math.exp(m.depth_encoding.log_min+(q/65535)*(m.depth_encoding.log_max-m.depth_encoding.log_min));
-      const p=[(x-cx)/fx*z,-(y-cy)/fy*z,-z];
-      for(let k=0;k<3;k++){lo[k]=Math.min(lo[k],p[k]);hi[k]=Math.max(hi[k],p[k]);}
-    }
-    const center=lo.map((v,i)=>(v+hi[i])*.5);
-    const span=Math.max(.001,...hi.map((v,i)=>v-lo[i]));
-    return {center,scale:2.35/span};
+ }
+ async function requestFrame(state,index){
+  if(state.frames.has(index))return state.frames.get(index);
+  if(state.pending.has(index))return state.pending.get(index);
+  const promise=decodeFrame(state,index).then(frame=>{
+   if(state.disposed)return null;
+   state.frames.set(index,frame);
+   while(state.frames.size>9){
+    const oldest=state.frames.keys().next().value;
+    if(oldest===state.currentSource){const keep=state.frames.get(oldest);state.frames.delete(oldest);state.frames.set(oldest,keep);}
+    else state.frames.delete(oldest);
+   }
+   return frame;
+  }).finally(()=>state.pending.delete(index));
+  state.pending.set(index,promise);return promise;
+ }
+ function prefetch(state){
+  const base=Math.floor(state.clock);
+  for(let n=0;n<7&&state.pending.size<3;n++){
+   const out=(base+n)%state.outFrames,idx=sourceIndex(state,out);
+   if(!state.frames.has(idx)&&!state.pending.has(idx))requestFrame(state,idx).catch(e=>console.warn('Frame prefetch failed',e));
   }
-  function applyFrame(state,frame,index){
-    state.depthTex.image.data=new Uint8Array(frame.q.buffer,frame.q.byteOffset,frame.q.byteLength);
-    state.depthTex.needsUpdate=true;state.colorTex.image.data=frame.rgba;
-    state.colorTex.needsUpdate=true;state.currentSource=index;
-  }
-  async function loadZip(file,slot){
-    const reader=new ZipReader(new BlobReader(file));
-    const zipEntries=await reader.getEntries();
-    const entries=new Map(zipEntries.filter(e=>!e.directory).map(e=>[e.filename,e]));
-    const manifestEntry=entries.get('sequence.json')||zipEntries.find(e=>e.filename.endsWith('/sequence.json'));
-    if(!manifestEntry)throw new Error(file.name+': sequence.json not found');
-    const meta=JSON.parse(await manifestEntry.getData(new TextWriter()));
-    if(meta.format!=='lal-depth-sequence-v1'||!meta.depth_encoding||meta.depth_encoding.type!=='uint16_le_log')throw new Error(file.name+': unsupported full_vda format');
-    const prefix=manifestEntry.filename.slice(0,manifestEntry.filename.lastIndexOf('/')+1);
-    const width=Math.min(512,meta.width),height=Math.max(2,Math.round(meta.height*width/meta.width));
-    const outFps=Math.min(18,meta.fps),outFrames=Math.max(1,Math.round(meta.num_frames/meta.fps*outFps));
-    const state={file,reader,entries,prefix,meta,width,height,outFps,outFrames,frames:new Map(),pending:new Map(),clock:0,currentSource:-1,group:null,depthTex:null,colorTex:null,cloud:null,fx:0,fy:0,cx:0,cy:0};
-    const sx=width/meta.width,sy=height/meta.height;
-    state.fx=meta.intrinsics.fx*sx;state.fy=meta.intrinsics.fy*sy;
-    state.cx=(meta.intrinsics.cx+.5)*sx-.5;state.cy=(meta.intrinsics.cy+.5)*sy-.5;
-    const first=await decodeFrame(state,0);
-    const bounds=calculateBounds(state,first);
-    const depthTex=dataTexture(new Uint8Array(first.q.buffer),width,height,THREE.RGFormat);
-    const colorTex=dataTexture(first.rgba,width,height,THREE.RGBAFormat);
-    colorTex.colorSpace=THREE.SRGBColorSpace;colorTex.needsUpdate=true;
-    const material=new THREE.ShaderMaterial({
-      glslVersion:THREE.GLSL3,vertexShader,fragmentShader,transparent:true,depthTest:true,depthWrite:false,
-      uniforms:{
-        depthTex:{value:depthTex},colorTex:{value:colorTex},gridW:{value:width},
-        fx:{value:state.fx},fy:{value:state.fy},cx:{value:state.cx},cy:{value:state.cy},
-        logMin:{value:meta.depth_encoding.log_min},logMax:{value:meta.depth_encoding.log_max},
-        pointSize:{value:touch?1.45:1.55}
-      }
-    });
-    const geometry=new THREE.BufferGeometry();
-    geometry.setAttribute('position',new THREE.BufferAttribute(new Float32Array(width*height*3),3));
-    geometry.setDrawRange(0,width*height);
-    const cloud=new THREE.Points(geometry,material);cloud.frustumCulled=false;
-    cloud.position.set(-bounds.center[0]*bounds.scale,-bounds.center[1]*bounds.scale,-bounds.center[2]*bounds.scale);
-    cloud.scale.setScalar(bounds.scale);
-    const angle=slot===0?Math.PI/6:7*Math.PI/6;
-    const holder=new THREE.Group();
-    holder.position.set(Math.sin(angle)*4.25,slot===0?.06:-.06,Math.cos(angle)*4.25);
-    holder.rotation.y=angle+Math.PI;holder.rotation.x=slot===0?-.025:.025;
-    holder.rotation.z=slot===0?.018:-.018;holder.scale.setScalar(.62);
-    holder.add(cloud);orbit.add(holder);
-    state.group=holder;state.depthTex=depthTex;state.colorTex=colorTex;state.cloud=cloud;
-    state.frames.set(0,first);animated.push(state);
-    status.textContent='Animated capture '+(slot+1)+' loaded · '+width+' × '+height+' · full depth';
-    prefetch(state);return state;
-  }
-  async function requestFrame(state,index){
-    if(state.frames.has(index))return state.frames.get(index);
-    if(state.pending.has(index))return state.pending.get(index);
-    const promise=decodeFrame(state,index).then(frame=>{
-      state.frames.set(index,frame);
-      while(state.frames.size>10){
-        const oldest=state.frames.keys().next().value;
-        if(oldest===state.currentSource){const keep=state.frames.get(oldest);state.frames.delete(oldest);state.frames.set(oldest,keep);}
-        else state.frames.delete(oldest);
-      }
-      return frame;
-    }).finally(()=>state.pending.delete(index));
-    state.pending.set(index,promise);return promise;
-  }
-  function prefetch(state){
-    const base=Math.floor(state.clock);
-    for(let n=0;n<7&&state.pending.size<3;n++){
-      const out=(base+n)%state.outFrames,idx=sourceIndex(state,out);
-      if(!state.frames.has(idx)&&!state.pending.has(idx))requestFrame(state,idx).catch(e=>console.warn('Frame prefetch failed',e));
-    }
-  }
-  async function loadAnimatedFiles(files){
-    if(files.length!==2){status.textContent='Please choose both full_vda ZIP files together.';return;}
-    status.textContent='Reading the two original depth sequences…';
-    document.getElementById('zipInput').disabled=true;
-    try{
-      const ordered=files.slice().sort((a,b)=>{
-        const score=f=>/abandoned/i.test(f.name)?0:/bucharest/i.test(f.name)?1:2;
-        return score(a)-score(b);
-      });
-      await Promise.all(ordered.map((file,i)=>loadZip(file,i)));
-      status.textContent='Six static + two animated captures · full depth · ready';
-    }catch(e){
-      console.error(e);status.textContent='Could not load the ZIPs: '+e.message;
-      document.getElementById('zipInput').disabled=false;
-    }
-  }
-  document.getElementById('zipInput').addEventListener('change',e=>{
-    const files=Array.from(e.target.files||[]);if(files.length)loadAnimatedFiles(files);
+ }
+ function chooseFile(inputId,slot){
+  document.getElementById(inputId).addEventListener('change',event=>{
+   const file=event.target.files&&event.target.files[0];if(file)loadSequence(file,slot);
+   event.target.value='';
   });
-  document.getElementById('pause').addEventListener('click',e=>{
-    playing=!playing;e.currentTarget.textContent=playing?'pause':'play';lastInteraction=performance.now();
-  });
-  controls.addEventListener('start',()=>{lastInteraction=performance.now();});
-  controls.addEventListener('change',()=>{lastInteraction=performance.now();});
-  function resize(){
-    camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
-    renderer.setPixelRatio(Math.min(devicePixelRatio||1,touch?.9:1.35));renderer.setSize(innerWidth,innerHeight);
+ }
+ chooseFile('zipA',0);chooseFile('zipB',1);
+ document.getElementById('pause').addEventListener('click',event=>{
+  playing=!playing;event.currentTarget.textContent=playing?'pause':'play';lastInteraction=performance.now();
+ });
+ controls.addEventListener('start',()=>{lastInteraction=performance.now();});
+ controls.addEventListener('change',()=>{lastInteraction=performance.now();});
+ function resize(){
+  camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+  renderer.setPixelRatio(Math.min(devicePixelRatio||1,touch?1.05:1.35));renderer.setSize(innerWidth,innerHeight);
+  for(const state of animated)if(state)state.material.uniforms.pixelScale.value=renderer.domElement.height/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2)));
+ }
+ addEventListener('resize',resize,{passive:true});
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)lastTick=0;});
+ function animate(now){
+  requestAnimationFrame(animate);if(document.hidden)return;
+  const dt=lastTick?Math.min(.05,(now-lastTick)/1000):0;lastTick=now;
+  if(playing){
+   for(const state of animated){
+    if(!state||state.disposed)continue;
+    state.clock=(state.clock+dt*state.outFps)%state.outFrames;
+    const idx=sourceIndex(state,Math.floor(state.clock));
+    if(idx!==state.currentSource){const frame=state.frames.get(idx);if(frame)applyFrame(state,frame,idx);}
+    prefetch(state);
+   }
+   if(!reducedMotion.matches&&now-lastInteraction>4200)orbit.rotation.y+=dt*.035;
   }
-  addEventListener('resize',resize,{passive:true});
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden)lastTick=0;});
-  function animate(now){
-    requestAnimationFrame(animate);if(document.hidden)return;
-    const dt=lastTick?Math.min(.05,(now-lastTick)/1000):0;lastTick=now;
-    if(playing){
-      for(const state of animated){
-        state.clock=(state.clock+dt*state.outFps)%state.outFrames;
-        const idx=sourceIndex(state,Math.floor(state.clock));
-        if(idx!==state.currentSource){const frame=state.frames.get(idx);if(frame)applyFrame(state,frame,idx);}
-        prefetch(state);
-      }
-      if(!reducedMotion.matches&&now-lastInteraction>4200)orbit.rotation.y+=dt*.035;
-    }
-    controls.update();renderer.render(scene,camera);
-  }
-  setStatus();requestAnimationFrame(animate);
+  controls.update();renderer.render(scene,camera);
+ }
+ requestAnimationFrame(animate);
+ for(let i=0;i<REMOTE_SEQUENCE_URLS.length;i++)if(REMOTE_SEQUENCE_URLS[i])loadSequence(REMOTE_SEQUENCE_URLS[i],i);
 })();
 </script>
 </body>

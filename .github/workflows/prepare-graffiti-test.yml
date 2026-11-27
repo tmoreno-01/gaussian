@@ -22,7 +22,7 @@ jobs:
       - name: Prepare only publicly downloadable CC BY captures
         run: |
           mkdir -p prepared
-          for id in de67a02f 77ec8209 92d261b7 0da683d4; do
+          for id in caaa1fb4; do
             if timeout 120 bash /tmp/splat-tools/scripts/supersplat-dl.sh "$id" "/tmp/$id.ply"; then
               python static-12-test/prepare-preview.py "/tmp/$id.ply" "prepared/$id.ply" || echo "Conversion rejected $id"
             else
@@ -54,7 +54,7 @@ jobs:
       - name: Commit prepared previews to test folder only
         run: |
           mkdir -p static-12-test/models
-          for id in de67a02f 77ec8209 92d261b7 0da683d4; do
+          for id in caaa1fb4; do
             if [ -f "prepared/$id.ply" ]; then
               test "$(stat -c%s "prepared/$id.ply")" -lt 20000000
               cp "prepared/$id.ply" "static-12-test/models/$id.ply"

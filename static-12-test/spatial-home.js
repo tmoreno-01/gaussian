@@ -609,8 +609,9 @@
       lastRenderedAt = now;
       // Anchor the next deadline to the actual presentation opportunity.
       nextDue = continuous ? now + interval : 0;
-      if (fragmentsMoving) moveFragments(delta);
-      if (moving) orbit.rotation.y += delta * orbitSpeed;
+      const driftDelta = delta / 24;
+      if (fragmentsMoving) moveFragments(driftDelta);
+      if (moving) orbit.rotation.y += driftDelta * orbitSpeed;
       needsRender = false;
       controls.update();
       for(const {mesh,holder} of localMeshes.values()) if(holder.visible && typeof mesh.updateForCamera==="function")mesh.updateForCamera(camera,renderer,now);

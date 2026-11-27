@@ -67,6 +67,10 @@
     return {x,y,z,yaw:a+Math.PI+between(-.95,.95),pitch:between(-.095,.095),roll:between(-.075,.075),scale:roles[i%targetCount]};
   }
   const poses=Array.from({length:targetCount},(_,i)=>makePose(i));
+  // Keep the lamp closer to the middle of the orbit so the walls pass in front more often.
+  const lampPose = poses[originalCaptures.findIndex(item => item.id === "9c6e8bac-3b79-4f39-a605-58999d33c33c")];
+  lampPose.x *= .65;
+  lampPose.z *= .65;
   function captureScale(id,role){
     // Small foreground-only lamp-post accent.
     if(id==="9c6e8bac-3b79-4f39-a605-58999d33c33c"){
@@ -108,9 +112,18 @@
           const y=(-dx*sin*cy+dy*distance-dz*cos*cy)/(l*depth*vertical);
           const face=Math.max(.16,Math.abs(Math.cos(q.yaw-angle)));
           const hw=scale*w*face/(2*depth*vertical*aspect),hh=scale*h/(2*depth*vertical);
-          rects.push({x,y,hw,hh});
+          rects.push({x,y,hw,hh,depth,lamp:o.lamp});
           // Avoid a single giant foreground fragment overwhelming the opening.
           penalty+=Math.max(0,hw-1.15)*.07+Math.max(0,hh-1.15)*.07;
+        }
+        const lampRect = rects.find(r => r.lamp);
+        if (lampRect) {
+          for (const wall of rects) {
+            if (wall.depth <= lampRect.depth) continue;
+            const w = Math.max(0, Math.min(1,lampRect.x+lampRect.hw,wall.x+wall.hw)-Math.max(-1,lampRect.x-lampRect.hw,wall.x-wall.hw));
+            const h = Math.max(0, Math.min(1,lampRect.y+lampRect.hh,wall.y+wall.hh)-Math.max(-1,lampRect.y-lampRect.hh,wall.y-wall.hh));
+            penalty += .45*w*h;
+          }
         }
         let filled=0,centerFilled=0,centerTotal=0,edgeFilled=0,edgeTotal=0;
         for(let iy=0;iy<12;iy++)for(let ix=0;ix<20;ix++){

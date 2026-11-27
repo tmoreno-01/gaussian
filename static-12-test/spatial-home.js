@@ -42,19 +42,19 @@
   const modes=["broken orbit","dense cluster","wide constellation","layered islands"];
   const mode=modes[Math.floor(random()*modes.length)],phase=between(0,Math.PI*2),orbitSpeed=.035;
   const layoutTilt=0;
-  const roles=Array.from({length:targetCount},(_,i)=>i<2?between(1.95,2.65):i<5?between(1.40,1.85):between(1.05,1.35));
+  const roles=Array.from({length:targetCount},(_,i)=>i<2?between(2.15,2.85):i<5?between(1.65,2.05):between(1.20,1.55));
   const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
   shuffle(roles);
   const order=shuffle(Array.from({length:targetCount},(_,i)=>i));
   function makePose(i){
     const k=order[i%targetCount],a=phase+k/targetCount*Math.PI*2+between(-.17,.17);
     let radius,y,x,z;
-    if(mode==="dense cluster"){radius=between(1.8,3.6);y=between(-.30,.30);}
-    else if(mode==="wide constellation"){radius=between(2.8,4.7);y=between(-.48,.48);}
-    else if(mode==="layered islands"){radius=k%3===0?between(1.5,2.6):between(3.2,4.6);y=between(-.40,.40);}
-    else{radius=between(2.7,4.4);y=between(-.25,.25);}
+    if(mode==="dense cluster"){radius=between(1.6,3.2);y=between(-.34,.34);}
+    else if(mode==="wide constellation"){radius=between(2.5,4.4);y=between(-.55,.55);}
+    else if(mode==="layered islands"){radius=k%3===0?between(1.4,2.4):between(2.8,4.1);y=between(-.45,.45);}
+    else{radius=between(2.4,4.0);y=between(-.30,.30);}
     x=Math.sin(a)*radius;z=Math.cos(a)*radius;
-    return {x,y,z,yaw:a+Math.PI+between(-.8,.8),pitch:between(-.045,.045),roll:between(-.035,.035),scale:roles[i%targetCount]};
+    return {x,y,z,yaw:a+Math.PI+between(-.95,.95),pitch:between(-.095,.095),roll:between(-.075,.075),scale:roles[i%targetCount]};
   }
   const poses=Array.from({length:targetCount},(_,i)=>makePose(i));
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -109,8 +109,8 @@
     scene.background = new THREE.Color(backgroundColor());
 
     const camera = new THREE.PerspectiveCamera(43, (canvasRoot.clientWidth || window.innerWidth) / Math.max(1, canvasRoot.clientHeight || window.innerHeight), .05, 120);
-    const cameraAngle=between(0,Math.PI*2), cameraDistance=10.7*Math.max(1,.66/camera.aspect);
-    camera.position.set(Math.sin(cameraAngle)*cameraDistance,cameraDistance*.34,Math.cos(cameraAngle)*cameraDistance);
+    const cameraAngle=between(0,Math.PI*2), cameraDistance=9.6*Math.max(1,.66/camera.aspect);
+    camera.position.set(Math.sin(cameraAngle)*cameraDistance,cameraDistance*.30,Math.cos(cameraAngle)*cameraDistance);
     camera.lookAt(0, 0, 0);
 
     const renderer = new THREE.WebGLRenderer({
@@ -148,7 +148,7 @@
     // Shorter inertia tail makes drag/pan respond sooner and settle faster.
     controls.dampingFactor = touchDevice ? .13 : .105;
     controls.enablePan = true;
-    controls.minDistance = 3.4;
+    controls.minDistance = 3.0;
     controls.maxDistance = Math.max(28,cameraDistance*1.8);
     controls.minPolarAngle = .35;
     controls.maxPolarAngle = Math.PI - .35;

@@ -73,7 +73,7 @@
       return random()<.18?between(1.85,2.35):Math.min(1.85,role*between(.55,.80));
     }
     // The alley's narrow geometry needs a substantial footprint.
-    if(id==="f0137e7f")return Math.min(6.2,Math.max(3.1,role*between(1.28,1.62)));
+    if(id==="f0137e7f")return 1.35*Math.min(6.2,Math.max(3.1,role*between(1.28,1.62)));
     if(id==="suvilahti-skatepark")return .512*Math.min(4.6,Math.max(3.6,role*1.55));
     if(id==="f4897475") return between(.22, .34);
     return Math.min(5.35,role*between(.96,1.20));
@@ -323,6 +323,7 @@
           const localUrl=new URL("./models/"+id+".ply",location.href);
           localUrl.searchParams.set("rev",revision.slice(0,8));
           const urls=[
+            "https://lifeafterlogic.com/media/freeman-alley-lite.ply",
             localUrl.href,
             "https://cdn.jsdelivr.net/gh/tmoreno-01/gaussian@"+revision+"/static-12-test/models/"+id+".ply?rev="+revision.slice(0,8),
             "https://raw.githubusercontent.com/tmoreno-01/gaussian/"+revision+"/static-12-test/models/"+id+".ply?rev="+revision.slice(0,8)

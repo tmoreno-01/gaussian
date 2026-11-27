@@ -33,8 +33,8 @@
   const sixOnly = new URLSearchParams(location.search).get("count") === "6" || extras.length===0;
   const captures = originalCaptures;
   const countLabel = document.getElementById("capture-count");
-  if(countLabel)countLabel.textContent = "Loading 11 unique captures…";
-  const localSlots = [{"id":"de67a02f","name":"Leake Street tunnel","author":"artfletch","url":"https://superspl.at/scene/de67a02f","licensed":true},{"id":"92d261b7","name":"Skatepark bowl","author":"dragonheart000","url":"https://superspl.at/scene/92d261b7","licensed":true},{"id":"0da683d4","name":"Stone arch bridge","author":"ethan3111","url":"https://superspl.at/scene/0da683d4","licensed":true},{"id":"f0137e7f","name":"Freeman Alley","author":"matousekfoto","url":"https://superspl.at/scene/f0137e7f","licensed":true},{"id":"b3a9bb2b","name":"Dilapidated Parking Lot","author":"bneg","url":"https://superspl.at/scene/b3a9bb2b","licensed":true}];
+  if(countLabel)countLabel.textContent = "Loading 9 unique captures…";
+  const localSlots = [{"id":"92d261b7","name":"Skatepark bowl","author":"dragonheart000","url":"https://superspl.at/scene/92d261b7","licensed":true},{"id":"f0137e7f","name":"Freeman Alley","author":"matousekfoto","url":"https://superspl.at/scene/f0137e7f","licensed":true},{"id":"b3a9bb2b","name":"Dilapidated Parking Lot","author":"bneg","url":"https://superspl.at/scene/b3a9bb2b","licensed":true}];
   // A new spatial composition, not just a shuffled ring. Each model is
   // assigned a fresh size role independently of identity on every reload.
   const random=()=>Math.random(),between=(a,b)=>a+(b-a)*random();
@@ -164,7 +164,8 @@
       loadingTimeout: 0, resize: null, visibility: null, theme: null
     };
     active = state;
-    const localMeshes = new Map(), usedFiles = new Set(), lumaHolders=new Map();let originalLoaded=0,solo=null;
+    const localMeshes = new Map(), usedFiles = new Set(), lumaHolders=new Map();let originalLoaded=0,solo=new URLSearchParams(location.search).get("solo");
+    if(![...captures,...localSlots].some(x=>x.id===solo))solo=null;
     const cleanupEnabled=new URLSearchParams(location.search).get('cleanup')!=='off';
     function applySolo(){for(const [id,holder] of lumaHolders)holder.visible=solo===null||solo===id;for(const [i,entry] of localMeshes)entry.holder.visible=solo===null||solo===localSlots[i].id;needsRender=true;}
     function soloButton(id){const b=document.createElement('button');b.type='button';b.textContent='Solo';b.onclick=()=>{solo=solo===id?null:id;applySolo();};return b;}
@@ -203,7 +204,7 @@
             const mesh=makeGaussian(THREE,data), holder=new THREE.Group(),old=localMeshes.get(i);
             if(old){orbit.remove(old.holder);old.mesh.dispose();usedFiles.delete(old.key);state.splats=state.splats.filter(x=>x!==old.mesh);}
             const poseIndex=old?.poseIndex??(captures.length+localMeshes.size),pose=poses[poseIndex];holder.position.set(pose.x,pose.y,pose.z);holder.rotation.set(pose.pitch,pose.yaw,pose.roll);// The long, narrow arch reads smaller than other models at equal bounding-box size.
-            const captureScale=item.id==="0da683d4"?Math.max(2.15,pose.scale*1.42):item.id==="92d261b7"?Math.max(1.5,pose.scale*1.13):pose.scale;
+            const captureScale=item.id==="92d261b7"?Math.max(1.5,pose.scale*1.13):pose.scale;
             holder.scale.setScalar(captureScale);
             holder.add(mesh);orbit.add(holder);state.splats.push(mesh);localMeshes.set(i,{mesh,holder,key,poseIndex});usedFiles.add(key);applySolo();
             // Preserve the random camera framing as additional scans arrive.
@@ -216,7 +217,7 @@
       }
     }
     const bulk=document.getElementById("bulk-ply"), bulkStatus=document.getElementById("bulk-status");
-    const aliases=[/leake|de67a02f/i,/skate|92d261b7/i,/stone|arch|bridge|0da683d4/i,/freeman|f0137e7f/i,/parking|b3a9bb2b/i];
+    const aliases=[/skate|92d261b7/i,/freeman|f0137e7f/i,/parking|b3a9bb2b/i];
     if(bulk)bulk.onchange=async()=>{
       if(localBusy)return;
       const files=Array.from(bulk.files||[]), unknown=[], matched=new Map(), ambiguous=[];

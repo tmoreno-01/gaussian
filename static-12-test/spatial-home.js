@@ -34,7 +34,7 @@
   const captures = originalCaptures;
   const countLabel = document.getElementById("capture-count");
   if(countLabel)countLabel.textContent = captures.length + " unique captures · " + (captures.length===12?"complete":"additional scans pending");
-  const localSlots = [{"id":"de67a02f","name":"Leake Street tunnel","author":"artfletch","url":"https://superspl.at/scene/de67a02f","licensed":true},{"id":"77ec8209","name":"Nexels Graffiti","author":"transkatgirl","url":"https://superspl.at/scene/77ec8209","licensed":true},{"id":"92d261b7","name":"Skatepark bowl","author":"dragonheart000","url":"https://superspl.at/scene/92d261b7","licensed":true},{"id":"0da683d4","name":"Stone arch bridge","author":"ethan3111","url":"https://superspl.at/scene/0da683d4","licensed":true},{"id":"309265EC-DDEB-4EB2-BA5F-BC329B0258EB","name":"Bayshore Roundhouse","author":"Polycam source · reuse terms unverified","url":"https://poly.cam/explore/capture/309265EC-DDEB-4EB2-BA5F-BC329B0258EB/bayshore%2Broundhouse","licensed":false},{"id":"ddc7cb49-4350-47e1-aad4-6cee046e3574","name":"Lostplacetest3","author":"Polycam source · reuse terms unverified","url":"https://poly.cam/explore/capture/ddc7cb49-4350-47e1-aad4-6cee046e3574/Lostplacetest3","licensed":false},{"id":"caaa1fb4","name":"Painted coastal bunker","author":"bernfra","url":"https://superspl.at/scene/caaa1fb4","licensed":true},{"id":"f0137e7f","name":"Freeman Alley","author":"matousekfoto","url":"https://superspl.at/scene/f0137e7f","licensed":true},{"id":"b3a9bb2b","name":"Dilapidated Parking Lot","author":"bneg","url":"https://superspl.at/scene/b3a9bb2b","licensed":true},{"id":"ecdefcaa","name":"Skate-park","author":"florian_schill","url":"https://superspl.at/scene/ecdefcaa","licensed":true},{"id":"1c7ac632","name":"Kulturlokschuppen railway depot","author":"simonbethke","url":"https://superspl.at/scene/1c7ac632","licensed":true},{"id":"76d06bae","name":"Garage_01","author":"aaahhh","url":"https://superspl.at/scene/76d06bae","licensed":true},{"id":"e49fcd4e","name":"Topsham street scan","author":"nbvs","url":"https://superspl.at/scene/e49fcd4e","licensed":true}];
+  const localSlots = [{"id":"de67a02f","name":"Leake Street tunnel","author":"artfletch","url":"https://superspl.at/scene/de67a02f","licensed":true},{"id":"77ec8209","name":"Nexels Graffiti","author":"transkatgirl","url":"https://superspl.at/scene/77ec8209","licensed":true},{"id":"92d261b7","name":"Skatepark bowl","author":"dragonheart000","url":"https://superspl.at/scene/92d261b7","licensed":true},{"id":"0da683d4","name":"Stone arch bridge","author":"ethan3111","url":"https://superspl.at/scene/0da683d4","licensed":true},{"id":"309265EC-DDEB-4EB2-BA5F-BC329B0258EB","name":"Bayshore Roundhouse","author":"Polycam source · reuse terms unverified","url":"https://poly.cam/explore/capture/309265EC-DDEB-4EB2-BA5F-BC329B0258EB/bayshore%2Broundhouse","licensed":false},{"id":"ddc7cb49-4350-47e1-aad4-6cee046e3574","name":"Lostplacetest3","author":"Polycam source · reuse terms unverified","url":"https://poly.cam/explore/capture/ddc7cb49-4350-47e1-aad4-6cee046e3574/Lostplacetest3","licensed":false},{"id":"caaa1fb4","name":"Painted coastal bunker","author":"bernfra","url":"https://superspl.at/scene/caaa1fb4","licensed":true},{"id":"f0137e7f","name":"Freeman Alley","author":"matousekfoto","url":"https://superspl.at/scene/f0137e7f","licensed":true},{"id":"b3a9bb2b","name":"Dilapidated Parking Lot","author":"bneg","url":"https://superspl.at/scene/b3a9bb2b","licensed":true},{"id":"ecdefcaa","name":"Skate-park","author":"florian_schill","url":"https://superspl.at/scene/ecdefcaa","licensed":true},{"id":"1c7ac632","name":"Kulturlokschuppen railway depot","author":"simonbethke","url":"https://superspl.at/scene/1c7ac632","licensed":true},{"id":"e49fcd4e","name":"Topsham street scan","author":"nbvs","url":"https://superspl.at/scene/e49fcd4e","licensed":true}];
   // A new spatial composition, not just a shuffled ring. Each model is
   // assigned a fresh size role independently of identity on every reload.
   const random=()=>Math.random(),between=(a,b)=>a+(b-a)*random();
@@ -105,7 +105,7 @@
     if (token !== generation || !isHomeVisible()) return;
 
     const { OrbitControls } = controlsModule;
-    const { LumaSplatsThree } = lumaModule;
+    const { LumaSplatsThree, LumaSplatsSemantics } = lumaModule;
     const scene = new THREE.Scene();
     const backgroundColor = () => document.documentElement.dataset.theme === "dark" ? 0x030303 : 0xffffff;
     scene.background = new THREE.Color(backgroundColor());
@@ -166,7 +166,10 @@
       loadingTimeout: 0, resize: null, visibility: null, theme: null
     };
     active = state;
-    const localMeshes = new Map(), usedFiles = new Set();let originalLoaded=0;
+    const localMeshes = new Map(), usedFiles = new Set(), lumaHolders=new Map();let originalLoaded=0,solo=null;
+    const cleanupEnabled=new URLSearchParams(location.search).get('cleanup')!=='off';
+    function applySolo(){for(const [id,holder] of lumaHolders)holder.visible=solo===null||solo===id;for(const [i,entry] of localMeshes)entry.holder.visible=solo===null||solo===localSlots[i].id;needsRender=true;}
+    function soloButton(id){const b=document.createElement('button');b.type='button';b.textContent='Solo';b.onclick=()=>{solo=solo===id?null:id;applySolo();};return b;}
     let localBusy = false;
     const importers=[],messages=[];
     const localList = document.getElementById("local-captures");
@@ -175,6 +178,9 @@
     }
     if(localList){
       localList.replaceChildren();
+      const all=document.createElement("button");all.type="button";all.textContent="Show all captures";all.onclick=()=>{solo=null;applySolo();};localList.append(all);
+      const names=["Faraday Street / Bentoghoul","Stevenson Place / July","Faraday Street / June","Graffiti Palace / Lamp post","Faraday Street / April","STIK Door / Brick Lane"];
+      originalCaptures.forEach((item,i)=>{const row=document.createElement("div");row.className="capture-row";const a=document.createElement("a");a.href="https://lumalabs.ai/capture/"+item.id;a.textContent=names[i]+" · Luma";a.target="_blank";a.rel="noopener";const btn=soloButton(item.id);row.append(a,btn);localList.append(row);});
       for(let i=0;i<localSlots.length;i++){
         const item=localSlots[i], row=document.createElement("div");row.className="capture-row";
         const name=document.createElement(item?"a":"span");name.textContent=item?item.name:"Additional unique scan "+(i-3);
@@ -193,24 +199,24 @@
           if(captures.length+localMeshes.size>=targetCount&&!localMeshes.has(i)){msg.textContent=targetCount+" capture limit reached";return;}
           localBusy=true;input.disabled=true;msg.textContent="Reading Gaussian PLY…";
           try{
-            const {readPly,makeGaussian}=await import("./local-gaussians.js?v=core-size-2");
-            const data=await readPly(file,touchDevice?140000:320000);
+            const {readPly,makeGaussian}=await import("./local-gaussians.js?v=clean-floaters-1");
+            const data=await readPly(file,touchDevice?140000:320000,cleanupEnabled);
             if(state.disposed)return;
             const mesh=makeGaussian(THREE,data), holder=new THREE.Group(),old=localMeshes.get(i);
             if(old){orbit.remove(old.holder);old.mesh.dispose();usedFiles.delete(old.key);state.splats=state.splats.filter(x=>x!==old.mesh);}
             const poseIndex=old?.poseIndex??(captures.length+localMeshes.size),pose=poses[poseIndex];holder.position.set(pose.x,pose.y,pose.z);holder.rotation.set(pose.pitch,pose.yaw,pose.roll);holder.scale.setScalar(pose.scale);
-            holder.add(mesh);orbit.add(holder);state.splats.push(mesh);localMeshes.set(i,{mesh,holder,key,poseIndex});usedFiles.add(key);
+            holder.add(mesh);orbit.add(holder);state.splats.push(mesh);localMeshes.set(i,{mesh,holder,key,poseIndex});usedFiles.add(key);applySolo();
             // Preserve the random camera framing as additional scans arrive.
             mesh.updateForCamera(camera,renderer,performance.now());needsRender=true;countLocal();flip.disabled=yaw.disabled=false;
-            msg.textContent=data.count.toLocaleString()+" / "+data.sourceCount.toLocaleString()+" Gaussians";return true;
+            msg.textContent=data.count.toLocaleString()+" / "+data.sourceCount.toLocaleString()+" Gaussians"+(data.removed?" · "+data.removed.toLocaleString()+" floaters filtered":"");return true;
           }catch(err){msg.textContent=err.message||String(err);return false;}finally{localBusy=false;input.disabled=false;input.value="";}
         };
         input.onchange=()=>importFile(input.files?.[0]);importers.push(importFile);
-        messages.push(msg);row.append(name,input,flip,yaw,msg);localList.append(row);
+        messages.push(msg);row.append(name,input,flip,yaw,soloButton(item.id),msg);localList.append(row);
       }
     }
     const bulk=document.getElementById("bulk-ply"), bulkStatus=document.getElementById("bulk-status");
-    const aliases=[/leake|de67a02f/i,/nexels|77ec8209/i,/skate.?park.?bowl|92d261b7/i,/stone|arch|bridge|0da683d4/i,/bayshore|roundhouse|309265ec/i,/lostplace|ddc7cb49/i,/bunker|caaa1fb4/i,/freeman|f0137e7f/i,/parking|b3a9bb2b/i,/skate.?park(?!.*bowl)|ecdefcaa/i,/kulturlokschuppen|1c7ac632/i,/garage|76d06bae/i,/topsham|e49fcd4e/i];
+    const aliases=[/leake|de67a02f/i,/nexels|77ec8209/i,/skate.?park.?bowl|92d261b7/i,/stone|arch|bridge|0da683d4/i,/bayshore|roundhouse|309265ec/i,/lostplace|ddc7cb49/i,/bunker|caaa1fb4/i,/freeman|f0137e7f/i,/parking|b3a9bb2b/i,/skate.?park(?!.*bowl)|ecdefcaa/i,/kulturlokschuppen|1c7ac632/i,/topsham|e49fcd4e/i];
     if(bulk)bulk.onchange=async()=>{
       if(localBusy)return;
       const files=Array.from(bulk.files||[]), unknown=[], matched=new Map(), ambiguous=[];
@@ -231,7 +237,7 @@
     // Models prepared from public, downloadable CC BY sources. Raw repository
     // fallback also works when a bot commit does not trigger a Pages rebuild.
     async function loadHostedModels(){
-      for(const i of [0,2,3,7,8,9,10,11,12,1,6]){
+      for(const i of [0,2,3,7,8,9,10,11,1,6]){
         if(state.disposed)return;
         if(localMeshes.has(i)||captures.length+localMeshes.size>=targetCount)continue;
         const id=localSlots[i].id;
@@ -377,7 +383,7 @@
     function addCapture(item, index) {
       const holder = new THREE.Group(),pose=poses[index];
       holder.position.set(pose.x,pose.y,pose.z);holder.rotation.set(pose.pitch,pose.yaw,pose.roll);holder.scale.setScalar(item.scale*pose.scale*1.15);
-      orbit.add(holder);
+      orbit.add(holder);lumaHolders.set(item.id,holder);applySolo();
 
       const splat = new LumaSplatsThree({
         source: "https://lumalabs.ai/capture/" + item.id,
@@ -385,6 +391,7 @@
         particleRevealEnabled: false,
         enableThreeShaderIntegration: false
       });
+      if(cleanupEnabled&&LumaSplatsSemantics?.FOREGROUND!==undefined)splat.semanticsMask=LumaSplatsSemantics.FOREGROUND;
       state.splats.push(splat);
       let settled = false;
       const settle = error => {
@@ -392,7 +399,7 @@
         settled = true;
         finishCapture(error);
       };
-      splat.onLoad = () => settle(null);
+      splat.onLoad = () => {if(cleanupEnabled&&LumaSplatsSemantics?.FOREGROUND!==undefined)splat.semanticsMask=LumaSplatsSemantics.FOREGROUND;settle(null);};
       splat.onError = error => {
         console.warn("Gaussian capture failed to load", item.id, error);
         settle(error || new Error("Capture failed"));

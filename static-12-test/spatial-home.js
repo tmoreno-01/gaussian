@@ -289,7 +289,7 @@
           localBusy=true;input.disabled=true;msg.textContent="Reading full-resolution Gaussian PLY…";
           try{
             const {readPly,makeGaussian}=await import("./local-gaussians.js?v=ced280d6");
-            const data=await readPly(file,140000,cleanupEnabled,item.id==="f4897475");
+            const data=await readPly(file,320000,cleanupEnabled,item.id==="f4897475");
             if(state.disposed)return false;
             const mesh=makeGaussian(THREE,data,item.orientation||"x-flip",item.splatSize||1,item.opacityBoost||1);
             removeLocalEntry(i);
@@ -323,7 +323,6 @@
           const localUrl=new URL("./models/"+id+".ply",location.href);
           localUrl.searchParams.set("rev",revision.slice(0,8));
           const urls=[
-            "https://lifeafterlogic.com/media/freeman-alley-lite.ply",
             localUrl.href,
             "https://cdn.jsdelivr.net/gh/tmoreno-01/gaussian@"+revision+"/static-12-test/models/"+id+".ply?rev="+revision.slice(0,8),
             "https://raw.githubusercontent.com/tmoreno-01/gaussian/"+revision+"/static-12-test/models/"+id+".ply?rev="+revision.slice(0,8)

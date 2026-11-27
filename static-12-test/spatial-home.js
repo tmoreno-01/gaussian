@@ -303,7 +303,7 @@
           if(captures.length+localMeshes.size>=targetCount&&!localMeshes.has(i)){msg.textContent=targetCount+" capture limit reached";return;}
           localBusy=true;input.disabled=true;msg.textContent="Reading full-resolution Gaussian PLY…";
           try{
-            const {readPly,makeGaussian}=await import("./local-gaussians.js?v=ced280d6");
+            const {readPly,makeGaussian}=await import("./local-gaussians.js?v=ddb3b11c0b");
             const data=await readPly(file,320000,cleanupEnabled,item.id==="f4897475");
             if(state.disposed)return false;
             const mesh=makeGaussian(THREE,data,item.orientation||"x-flip",item.splatSize||1,item.opacityBoost||1);
@@ -338,7 +338,7 @@
           const localUrl=new URL("./models/"+id+".ply",location.href);
           localUrl.searchParams.set("rev",revision.slice(0,8));
           const urls=[
-            "https://lifeafterlogic.com/media/freeman-alley.ply",
+            "https://lifeafterlogic.com/media/freemanalley-high.ply",
             localUrl.href,
             "https://cdn.jsdelivr.net/gh/tmoreno-01/gaussian@"+revision+"/static-12-test/models/"+id+".ply?rev="+revision.slice(0,8),
             "https://raw.githubusercontent.com/tmoreno-01/gaussian/"+revision+"/static-12-test/models/"+id+".ply?rev="+revision.slice(0,8)
@@ -586,7 +586,7 @@
       if (moving) orbit.rotation.y += delta * orbitSpeed;
       needsRender = false;
       controls.update();
-      for(const {mesh} of localMeshes.values()) if(typeof mesh.updateForCamera==="function")mesh.updateForCamera(camera,renderer,now);
+      for(const {mesh,holder} of localMeshes.values()) if(holder.visible && typeof mesh.updateForCamera==="function")mesh.updateForCamera(camera,renderer,now);
       renderer.render(scene, camera);
       submitFrame();
       renderedFrames++;

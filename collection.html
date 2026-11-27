@@ -3,9 +3,9 @@
 <style>*{box-sizing:border-box}body{margin:0;background:#030303;color:#eee;font:13px Arial,sans-serif;overflow:hidden}canvas{display:block;touch-action:none}header,footer{position:fixed;left:0;right:0;padding:18px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;z-index:2;pointer-events:none}header{top:0}footer{bottom:0}header>*,footer>*{pointer-events:auto}button,select,label.pick{background:#121212;color:#eee;border:1px solid #555;padding:9px 12px;font:inherit;cursor:pointer}label{display:inline-flex;align-items:center;gap:6px}input[type=file]{display:none}input[type=range]{accent-color:#ddd;width:100px}#seek{width:min(36vw,340px)}#intro{position:fixed;inset:0;display:grid;place-content:center;text-align:center;background:#030303eb;z-index:3;padding:24px;gap:15px}#intro[hidden]{display:none}h1{font-size:clamp(26px,5vw,46px);letter-spacing:-.06em;font-weight:400;margin:0}p{margin:0;max-width:450px;color:#999;line-height:1.5}#message{color:#bbb;max-width:450px;overflow-wrap:anywhere;min-height:18px}#status{color:#aaa;font-size:11px}button:disabled{opacity:.5}a{color:#aaa}.controls{display:flex;align-items:center;flex-wrap:wrap;gap:12px}#intro{z-index:4}#panel{position:fixed;right:16px;top:75px;bottom:85px;width:min(280px,42vw);overflow:auto;background:#101010e8;border:1px solid #333;padding:12px;z-index:3}#panel[hidden]{display:none}#list{display:grid;gap:6px;margin:10px 0} .item{display:flex;gap:7px;align-items:center;border-bottom:1px solid #252525;padding:8px 0}.item button{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:5px 6px;background:none;border:0}.item small{color:#999}#errors{white-space:pre-wrap;color:#ffb5a0;font-size:12px;overflow-wrap:anywhere}#status{max-width:90vw}#intro label{justify-content:center}#intro p{margin:auto}header{padding:12px 18px}footer{padding:12px 18px} @media(max-width:650px){#panel{top:110px;bottom:125px;width:min(290px,85vw)}footer{gap:6px}header{gap:7px}input[type=range]{width:62px}}</style>
 <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.157.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.157.0/examples/jsm/"}}</script></head>
 <body>
-<header><span>Matter of Perspective / collection study</span><div class="controls"><label>Quality <select id="tier"><option value="desktop">Desktop</option><option value="mobile">Mobile</option><option value="original">Full-resolution ZIPs</option></select></label><label class="pick" for="file">Open folder</label><label class="pick" for="zipfiles">Open ZIPs</label><button id="showlist">Scenes</button></div></header>
+<header><span>Matter of Perspective / collection study</span><div class="controls"><label>Quality <select id="tier"><option value="desktop">Desktop</option><option value="mobile">Mobile</option><option value="original">Full-resolution originals</option></select></label><label class="pick" for="file">Open folder</label><label class="pick" for="zipfiles">Open ZIPs</label><button id="showlist">Scenes</button></div></header>
 <input id="file" type="file" webkitdirectory multiple><input id="zipfiles" type="file" accept=".zip" multiple>
-<div id="intro"><h1>Living fragments.</h1><p>Choose your original output folder containing the individual full_vda.zip files, or your extracted web_assets_v2 folder. All completed animated sequences appear in a single interactive space. Files stay on your device.</p><div><label class="pick" for="file">Choose collection folder</label> <label class="pick" for="zipfiles">Choose ZIP files</label></div><div id="message" role="status"></div></div>
+<div id="intro"><h1>Living fragments.</h1><p>Choose your original output folder containing full_vda.zip files or extracted colour/depth sequences, or your web_assets_v2 folder. All completed animated sequences appear in a single interactive space. Files stay on your device.</p><div><label class="pick" for="file">Choose collection folder</label> <label class="pick" for="zipfiles">Choose ZIP files</label></div><div id="message" role="status"></div></div>
 <aside id="panel" hidden><div class="controls"><button id="all">Show all</button><button id="none">Hide all</button></div><p>Click a scene name to inspect it alone.</p><div id="list"></div><div id="errors" role="status"></div></aside>
 <footer><div class="controls"><button id="play">Pause</button><button id="orbit">Orbit off</button><label>Layout <select id="layout"><option value="space">Space</option><option value="ring">Ring</option><option value="grid">Grid</option></select></label><label>Detail <select id="detail"><option value="auto">Auto</option><option value="original">Original</option><option value="fine">Fine ×4</option></select></label><label>Playback <select id="rate"><option value="auto">Auto</option><option value="source">Source</option><option value="12">12 fps</option><option value="18">18 fps</option></select></label><label>Size <input id="size" type="range" min=".4" max="2" step=".05" value="1"></label><label>Depth <input id="depth" type="range" min="1.5" max="12" step=".1" value="4"></label><button id="reset">Reset view</button></div><span id="status">Awaiting folder</span></footer>
 <script type="module">
@@ -118,8 +118,20 @@ async function readZip(file){
  if(b.byteLength!==e.size)throw Error('Incorrect entry size '+name);return new Uint8Array(b);}};
 }
 
-async function originalSequence(file){
- const archive=await readZip(file);
+function folderArchive(files,manifestPath){
+ const base=manifestPath.slice(0,manifestPath.lastIndexOf('/')+1);
+ // Only expose the current sequence's manifest and direct frame files.
+ const entries={get:name=>files.get(base+name)};
+ return {entries,async get(name,limit){
+  const file=entries.get(name);
+  if(!file)throw Error('Missing '+name);
+  if(file.size>limit)throw Error('Oversized entry '+name);
+  return new Uint8Array(await file.arrayBuffer());
+ }};
+}
+
+async function originalSequence(file,looseArchive=null){
+ const archive=looseArchive||await readZip(file);
  const original=JSON.parse(td.decode(await archive.get('sequence.json',1024*1024)));
  const d=original.depth_encoding,k=original.intrinsics,w=original.width,h=original.height,n=original.num_frames;
  if(original.format!=='lal-depth-sequence-v1'||d?.type!=='uint16_le_log'||!Number.isInteger(w)||!Number.isInteger(h)||w<2||h<2||w*h>1200000||!Number.isInteger(n)||n<1||n>30000||!(original.fps>0&&original.fps<=120)||!k||!(k.fx>0&&k.fy>0)||![k.cx,k.cy,d.log_min,d.log_max].every(Number.isFinite)||!(d.log_max>d.log_min))throw Error('Not a valid full_vda reconstruction');
@@ -156,13 +168,25 @@ async function open(filesIn){
  clear();const gen=generation;loading=true;$('intro').hidden=false;$('message').textContent='Scanning the folder…';$('errors').textContent='';
  const files=new Map(Array.from(filesIn,f=>[f.webkitRelativePath||f.name,f])),keys=[...files.keys()];let tier=$('tier').value;
  const rawPaths=keys.filter(p=>/_full_vda\.zip$/i.test(p)&&!p.includes('.partial/')).sort();
+ const loosePaths=keys.filter(p=>!p.includes('.partial/')&&(p==='sequence.json'||p.endsWith('/sequence.json'))).filter(p=>{const base=p.slice(0,p.lastIndexOf('/')+1);return files.has(base+'depth/000000.bin')||files.has(base+'color/000000.jpg');}).sort();
+ const hasOriginal=rawPaths.length>0||loosePaths.length>0;
  const grouped=new Map();for(const p of keys){if(p.includes('.partial/')||!p.endsWith('/sequence.json'))continue;const seg=p.split('/'),kind=seg[seg.length-2];if(kind!=='desktop'&&kind!=='mobile')continue;const id=seg.slice(0,-2).join('/');if(!grouped.has(id))grouped.set(id,{});grouped.get(id)[kind]=p;}
- if(!grouped.size&&rawPaths.length){tier='original';$('tier').value=tier;}
- if(tier==='original'&&!rawPaths.length&&grouped.size){tier='desktop';$('tier').value=tier;}
+ if(!grouped.size&&hasOriginal){tier='original';$('tier').value=tier;}
+ if(tier==='original'&&!hasOriginal&&grouped.size){tier='desktop';$('tier').value=tier;}
  const paths=tier==='original'?[]:[...grouped.values()].map(t=>t[tier]||t[tier==='desktop'?'mobile':'desktop']).filter(Boolean);
- if(!paths.length&&!(tier==='original'&&rawPaths.length)){$('message').textContent='No full_vda.zip files or optimiser folders found. Extract the outer Drive download ZIP first.';loading=false;return;}
+ if(!paths.length&&!(tier==='original'&&hasOriginal)){$('message').textContent='No original ZIPs, extracted colour/depth sequences or optimiser folders found. Select a folder containing sequence.json and its frame files.';loading=false;return;}
  let issues=[];
- if(tier==='original'){for(const path of rawPaths){try{if(gen!==generation)return;$('message').textContent='Indexing '+path.split('/').pop()+'…';const {m,index,archive}=await originalSequence(files.get(path));if(gen!==generation)return;states.push({gen,m,index,archive,name:m.source||path.split('/').pop(),enabled:true,error:null,chunks:new Map(),pending:new Set(),bitmap:false,shown:-1,clock:0,minDepth:.01,original:true});}catch(e){issues.push(path+': '+e.message);}}}
+ if(tier==='original'){
+  const looseBases=new Set(loosePaths.map(p=>p.slice(0,p.lastIndexOf('/')+1).replace(/\/$/,'')));
+  const sources=[...loosePaths.map(path=>({path,loose:true})),...rawPaths.filter(p=>!looseBases.has(p.replace(/\.zip$/i,''))).map(path=>({path,loose:false}))];
+  for(const {path,loose} of sources){try{
+   if(gen!==generation)return;
+   $('message').textContent='Indexing '+(loose?path.split('/').slice(-2,-1)[0]||path:path.split('/').pop())+'…';
+   const {m,index,archive}=await originalSequence(files.get(path),loose?folderArchive(files,path):null);
+   if(gen!==generation)return;
+   states.push({gen,m,index,archive,name:m.source||(loose?path.split('/').slice(-2,-1)[0]||path:path.split('/').pop()),enabled:true,error:null,chunks:new Map(),pending:new Set(),bitmap:false,shown:-1,clock:0,minDepth:.01,original:true});
+  }catch(e){issues.push(path+': '+e.message);}}
+ }
  for(const path of paths.sort()){try{const m=JSON.parse(await files.get(path).text()),base=path.slice(0,path.lastIndexOf('/')+1),index=validate(m,base,files);
  if(gen!==generation)return;
  states.push({gen,m,base,index,files,name:m.source||path.split('/').slice(-3,-2)[0],enabled:true,error:null,chunks:new Map(),pending:new Set(),bitmap:false,shown:-1,clock:0,minDepth:.01});

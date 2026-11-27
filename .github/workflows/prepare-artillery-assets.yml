@@ -1,0 +1,83 @@
+name: Prepare full-detail Artillery Passage assets
+
+on:
+  push:
+    paths:
+      - ".github/workflows/prepare-artillery-assets.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: prepare-artillery-assets
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check out Gaussian test site
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check out original Artillery Passage SOG source
+        uses: actions/checkout@v4
+        with:
+          repository: willeastcott/splat-walk
+          path: source-artillery
+          fetch-depth: 1
+
+      - name: Check out Spark LOD builder
+        uses: actions/checkout@v4
+        with:
+          repository: sparkjsdev/spark
+          path: spark-source
+          fetch-depth: 1
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build full-detail, chunked RAD assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          DEST="$GITHUB_WORKSPACE/static-12-test/models/artillery"
+          mkdir -p "$DEST"
+          cp source-artillery/public/scene/LICENSE.txt "$DEST/LICENSE.txt"
+          for i in 0 1 2 3 4; do
+            CHUNK="0_${i}"
+            ARCHIVE="$DEST/artillery-${CHUNK}.sog"
+            (cd "source-artillery/public/scene/${CHUNK}" && zip -q -r "$ARCHIVE" .)
+            (
+              cd "$DEST"
+              npm --prefix "$GITHUB_WORKSPACE/spark-source" run build-lod -- "artillery-${CHUNK}.sog" --quality --max-sh=3 --rad-chunked
+            )
+            rm "$ARCHIVE"
+          done
+          cat > "$DEST/ATTRIBUTION.txt" <<'EOF'
+          Artillery Passage — David Fletcher
+          Original Gaussian splat published on SuperSplat: https://superspl.at/scene/f4897475
+          Source redistribution: CC BY 4.0
+          High-detail 5-million-splat SOG source prepared by Will Eastcott:
+          https://github.com/willeastcott/splat-walk
+          This site uses Spark by World Labs to render the full-detail source with streaming LOD.
+          EOF
+          echo "Prepared RAD assets:"
+          find "$DEST" -maxdepth 1 -type f -printf '%f %s bytes\n' | sort
+
+      - name: Commit prepared assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add static-12-test/models/artillery
+          if git diff --cached --quiet; then
+            echo "No Artillery asset changes to commit."
+            exit 0
+          fi
+          git commit -m "Add full-detail streamed Artillery Passage assets"
+          git push

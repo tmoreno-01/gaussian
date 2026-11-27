@@ -48,15 +48,15 @@ export async function readPly(file,limit=300000,cleanup=true){
  if(clean.opacity.length<count*.55)return result;
  return {...result,...clean,count:clean.opacity.length,removed:count-clean.opacity.length};
 }
-export function makeGaussian(THREE,data,orientation="x-flip"){
+export function makeGaussian(THREE,data,orientation="x-flip",splatSize=1,opacityBoost=1){
  const {pos,scales,rots,colors,opacity,count,center,span}=data;
  const width=1024,height=Math.ceil(count/width),texels=width*height*4;
  const a=new Float32Array(texels),b=new Float32Array(texels),c=new Float32Array(texels),d=new Float32Array(texels);
  const factor=Math.min(4.2/span,3.1/(data.coreSpan||span));
  for(let i=0;i<count;i++){
   const k=4*i,j=3*i;
-  a.set([(pos[j]-center[0])*factor,(pos[j+1]-center[1])*factor,(pos[j+2]-center[2])*factor,opacity[i]],k);
-  b.set([scales[j]*factor,scales[j+1]*factor,scales[j+2]*factor,0],k);
+  a.set([(pos[j]-center[0])*factor,(pos[j+1]-center[1])*factor,(pos[j+2]-center[2])*factor,Math.min(1,opacity[i]*opacityBoost)],k);
+  b.set([scales[j]*factor*splatSize,scales[j+1]*factor*splatSize,scales[j+2]*factor*splatSize,0],k);
   c.set(rots.slice(k,k+4),k);d.set([...colors.slice(j,j+3),1],k);
  }
  const texture=arr=>{const t=new THREE.DataTexture(arr,width,height,THREE.RGBAFormat,THREE.FloatType);t.minFilter=t.magFilter=THREE.NearestFilter;t.generateMipmaps=false;t.needsUpdate=true;return t;};

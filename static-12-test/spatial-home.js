@@ -165,17 +165,19 @@
   }
 
   async function startViewer(token) {
-    const [THREE, controlsModule, lumaModule, sparkModule] = await Promise.all([
+    const [THREE, controlsModule, lumaModule] = await Promise.all([
       import("three"),
       import("three/addons/controls/OrbitControls.js"),
-      import("@lumaai/luma-web"),
-      import("@sparkjsdev/spark")
+      import("@lumaai/luma-web")
     ]);
+    let sparkModule=null;
+    try{sparkModule=await import("@sparkjsdev/spark");}
+    catch(error){console.warn("Spark high-detail renderer unavailable; keeping streamed Luma captures active.",error);}
     if (token !== generation || !isHomeVisible()) return;
 
     const { OrbitControls } = controlsModule;
     const { LumaSplatsThree, LumaSplatsSemantics } = lumaModule;
-    const { SparkRenderer, SplatMesh } = sparkModule;
+    const SparkRenderer=sparkModule?.SparkRenderer,SplatMesh=sparkModule?.SplatMesh;
     const scene = new THREE.Scene();
     const backgroundColor = () => document.documentElement.dataset.theme === "dark" ? 0x030303 : 0xffffff;
     scene.background = new THREE.Color(backgroundColor());
@@ -238,7 +240,7 @@
     };
     active = state;
     let needsRender = true;
-    const sparkRenderer = new SparkRenderer({
+    const sparkRenderer = SparkRenderer ? new SparkRenderer({
       renderer,
       pagedExtSplats: true,
       lodSplatScale: touchDevice ? .95 : 1.30,
@@ -248,9 +250,8 @@
         needsRender = true;
         if(!state.raf)animate();
       }
-    });
-    scene.add(sparkRenderer);
-    state.sparkRenderer = sparkRenderer;
+    }) : null;
+    if(sparkRenderer){scene.add(sparkRenderer);state.sparkRenderer=sparkRenderer;}
     const localMeshes = new Map(), usedFiles = new Set(), lumaHolders=new Map();let originalLoaded=0,solo=new URLSearchParams(location.search).get("solo");
     if(![...captures,...localSlots].some(x=>x.id===solo))solo=null;
     const cleanupEnabled=new URLSearchParams(location.search).get('cleanup')!=='off';
@@ -320,6 +321,7 @@
           localBusy=true;input.disabled=true;msg.textContent="Reading full-resolution Gaussian PLY…";
           try{
             if(item?.id==="suvilahti-skatepark"){
+              if(!SplatMesh)throw Error("Spark renderer did not load; the other captures are still available.");
               const mesh=new SplatMesh({
                 stream:file.stream(),streamLength:file.size,fileName:file.name,
                 lod:"quality",extSplats:true,
@@ -396,6 +398,7 @@
           continue;
         }
         if(id==="f4897475"){
+          if(!SplatMesh){if(messages[i])messages[i].textContent="Spark renderer unavailable · other captures remain active";continue;}
           if(messages[i])messages[i].textContent="Loading original 5M-Gaussian scan · high-detail streamed LOD…";
           const holder=new THREE.Group(),normalize=new THREE.Group(),meshes=[];
           const poseIndex=captures.length+i,pose=poses[poseIndex];

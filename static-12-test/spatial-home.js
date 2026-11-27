@@ -71,6 +71,57 @@
     if(id==="f0137e7f")return Math.min(5.25,Math.max(2.40,role*between(1.12,1.38)));
     return Math.min(5.35,role*between(.96,1.20));
   }
+  // Sample each model's scale once: opening camera selection and loading
+  // must use the very same random composition.
+  const assignedScales=new Map([...originalCaptures,...localSlots].map((item,i)=>[
+    item.id,captureScale(item.id,poses[i].scale)*(item.scale?item.scale*1.40:1)
+  ]));
+  // Cheap projected wall proxies choose a strong opening view before any
+  // models stream in. They are framing estimates, not asset bounding boxes.
+  // No extra fetches, render passes or GPU readbacks are needed.
+  function openingView(aspect){
+    const aspectFactor=Math.max(1,.66/aspect),vertical=Math.tan(43*Math.PI/360);
+    const samples=[...originalCaptures,...localSlots].map((item,i)=>{
+      const lamp=item.id==="9c6e8bac-3b79-4f39-a605-58999d33c33c",alley=item.id==="f0137e7f";
+      return {pose:poses[i],scale:assignedScales.get(item.id),w:lamp?.52:alley?2.65:1.95,h:lamp?2.05:alley?1.55:1.35,lamp};
+    });
+    const candidates=[],start=between(0,Math.PI*2);
+    for(let i=0;i<24;i++){
+      const angle=start+i*Math.PI*2/24;
+      for(const distance of [8.8,9.6,10.4,11.2].map(x=>x*aspectFactor)){
+        const cx=Math.sin(angle)*distance,cz=Math.cos(angle)*distance,cy=distance*.30;
+        const l=Math.hypot(distance,cy),sin=Math.sin(angle),cos=Math.cos(angle);
+        const rects=[];let penalty=0;
+        for(const o of samples){
+          const {pose:q,scale,w,h}=o;
+          const dx=q.x-cx,dy=q.y-cy,dz=q.z-cz;
+          const depth=(-dx*sin*distance-dy*cy-dz*cos*distance)/l;
+          if(depth<1.6){penalty+=1.5;continue;}
+          const x=(dx*cos-dz*sin)/(depth*vertical*aspect);
+          const y=(-dx*sin*cy+dy*distance-dz*cos*cy)/(l*depth*vertical);
+          const face=Math.max(.16,Math.abs(Math.cos(q.yaw-angle)));
+          const hw=scale*w*face/(2*depth*vertical*aspect),hh=scale*h/(2*depth*vertical);
+          if(!o.lamp)rects.push({x,y,hw,hh});
+          // Avoid a single giant foreground fragment overwhelming the opening.
+          penalty+=Math.max(0,hw-1.15)*.07+Math.max(0,hh-1.15)*.07;
+        }
+        let filled=0,centerFilled=0,centerTotal=0,edgeFilled=0,edgeTotal=0;
+        for(let iy=0;iy<12;iy++)for(let ix=0;ix<20;ix++){
+          const x=(ix+.5)/10-1,y=(iy+.5)/6-1;
+          const hit=rects.some(r=>Math.abs(x-r.x)<=r.hw&&Math.abs(y-r.y)<=r.hh);
+          if(hit)filled++;
+          if(Math.abs(x)<.75&&Math.abs(y)<.66){centerTotal++;if(hit)centerFilled++;}
+          if(Math.abs(x)>.85||Math.abs(y)>.83){edgeTotal++;if(hit)edgeFilled++;}
+        }
+        const coverage=filled/240,central=centerFilled/centerTotal,edge=edgeFilled/edgeTotal;
+        const score=central*1.35-Math.abs(coverage-.78)*1.8-Math.max(0,edge-.72)*.55-penalty-.025*Math.abs(distance/aspectFactor-9.6);
+        candidates.push({angle,distance,score,coverage,central});
+      }
+    }
+    candidates.sort((a,b)=>b.score-a.score);
+    const best=candidates.filter(x=>x.score>=candidates[0].score-.065).slice(0,5);
+    return best[Math.floor(random()*best.length)];
+  }
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   let active = null;
   let loading = false;
@@ -123,7 +174,7 @@
     scene.background = new THREE.Color(backgroundColor());
 
     const camera = new THREE.PerspectiveCamera(43, (canvasRoot.clientWidth || window.innerWidth) / Math.max(1, canvasRoot.clientHeight || window.innerHeight), .05, 120);
-    const cameraAngle=between(0,Math.PI*2), cameraDistance=9.6*Math.max(1,.66/camera.aspect);
+    const opening=openingView(camera.aspect),cameraAngle=opening.angle,cameraDistance=opening.distance;
     camera.position.set(Math.sin(cameraAngle)*cameraDistance,cameraDistance*.30,Math.cos(cameraAngle)*cameraDistance);
     camera.lookAt(0, 0, 0);
 
@@ -218,11 +269,11 @@
             const mesh=makeGaussian(THREE,data), holder=new THREE.Group(),old=localMeshes.get(i);
             if(old){orbit.remove(old.holder);old.mesh.dispose();usedFiles.delete(old.key);state.splats=state.splats.filter(x=>x!==old.mesh);}
             const poseIndex=old?.poseIndex??(captures.length+localMeshes.size),pose=poses[poseIndex];holder.position.set(pose.x,pose.y,pose.z);holder.rotation.set(pose.pitch,pose.yaw,pose.roll);// The long, narrow arch reads smaller than other models at equal bounding-box size.
-            const calibratedScale=captureScale(item.id,pose.scale);
+            const calibratedScale=assignedScales.get(item.id);
             holder.scale.setScalar(calibratedScale);
             holder.add(mesh);orbit.add(holder);state.splats.push(mesh);localMeshes.set(i,{mesh,holder,key,poseIndex});usedFiles.add(key);applySolo();
             // Preserve the random camera framing as additional scans arrive.
-            mesh.updateForCamera(camera,renderer,performance.now());needsRender=true;countLocal();flip.disabled=yaw.disabled=false;
+            mesh.updateForCamera(camera,renderer,performance.now());needsRender=true;countLocal();updateProgress();flip.disabled=yaw.disabled=false;
             msg.textContent=data.count.toLocaleString()+" / "+data.sourceCount.toLocaleString()+" Gaussians"+(data.removed?" · "+data.removed.toLocaleString()+" floaters filtered":"");return true;
           }catch(err){msg.textContent=err.message||String(err);return false;}finally{localBusy=false;input.disabled=false;input.value="";}
         };
@@ -283,6 +334,7 @@
     let failed = 0;
     let revealed = false;
     let revealPending = false;
+    const openingStarted=performance.now();
     let loadTimer = 0;
     state.cancelLoading = () => clearTimeout(loadTimer);
     function revealScene() {
@@ -374,9 +426,10 @@
     controls.addEventListener("change", () => { lastCameraChange = performance.now(); needsRender = true; });
 
     function updateProgress() {
-      // Show the artwork when at least one capture is ready, or all attempts have settled.
-      if (!revealed && completed > failed) revealPending = true;
-      else if (completed === captures.length) revealScene();
+      // Prefer a composed opening rather than exposing the first isolated scan.
+      // Keep the fallback bounded so a slow stream cannot trap the loader.
+      const ready=originalLoaded+localMeshes.size;
+      if(!revealed&&(ready>=4||(ready>0&&performance.now()-openingStarted>8500)||completed===captures.length))revealPending=true;
       if (completed === captures.length) {
         clearTimeout(state.loadingTimeout);
         if (failed) showError(failed + " public captures could not load.");
@@ -402,7 +455,7 @@
 
     function addCapture(item, index) {
       const holder = new THREE.Group(),pose=poses[index];
-      holder.position.set(pose.x,pose.y,pose.z);holder.rotation.set(pose.pitch,pose.yaw,pose.roll);holder.scale.setScalar(item.scale*captureScale(item.id,pose.scale)*1.40);
+      holder.position.set(pose.x,pose.y,pose.z);holder.rotation.set(pose.pitch,pose.yaw,pose.roll);holder.scale.setScalar(assignedScales.get(item.id));
       orbit.add(holder);lumaHolders.set(item.id,holder);applySolo();
 
       const splat = new LumaSplatsThree({
@@ -461,8 +514,9 @@
 
       // Finish the damping motion before the independent scene orbit resumes.
       const responsive = interacting || now - lastCameraChange < 320;
-      const moving = !reducedMotion.matches && !responsive && now - lastInteraction > 4200;
+      const moving = revealed && !reducedMotion.matches && !responsive && now - lastInteraction > 4200;
       const loadingScene = completed < captures.length;
+      if(!revealed&&originalLoaded+localMeshes.size>0&&now-openingStarted>8500)revealPending=true;
       const continuous = responsive || moving || loadingScene;
       if (!continuous && !needsRender && !pendingResolution) {
         resetStats(now);

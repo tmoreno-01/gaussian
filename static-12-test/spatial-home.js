@@ -63,12 +63,12 @@
   }
   const poses=Array.from({length:targetCount},(_,i)=>makePose(i));
   function captureScale(id,role){
-    // Slender street furniture is usually an accent, rarely a hero.
+    // Keep the lamp-post capture varied, with its surrounding context restored.
     if(id==="9c6e8bac-3b79-4f39-a605-58999d33c33c"){
-      return random()<.16?between(1.9,2.6):Math.min(1.65,role*between(.48,.78));
+      return random()<.30?between(2.4,3.5):Math.min(2.35,role*between(.68,1.02));
     }
     // The alley's narrow geometry needs a substantial footprint.
-    if(id==="f0137e7f")return Math.min(5.25,Math.max(2.40,role*between(1.12,1.38)));
+    if(id==="f0137e7f")return Math.min(6.2,Math.max(3.1,role*between(1.28,1.62)));
     return Math.min(5.35,role*between(.96,1.20));
   }
   // Sample each model's scale once: opening camera selection and loading
@@ -83,7 +83,7 @@
     const aspectFactor=Math.max(1,.66/aspect),vertical=Math.tan(43*Math.PI/360);
     const samples=[...originalCaptures,...localSlots].map((item,i)=>{
       const lamp=item.id==="9c6e8bac-3b79-4f39-a605-58999d33c33c",alley=item.id==="f0137e7f";
-      return {pose:poses[i],scale:assignedScales.get(item.id),w:lamp?.52:alley?2.65:1.95,h:lamp?2.05:alley?1.55:1.35,lamp};
+      return {pose:poses[i],scale:assignedScales.get(item.id),w:lamp?1.45:alley?2.65:1.95,h:lamp?2.05:alley?1.55:1.35,lamp};
     });
     const candidates=[],start=between(0,Math.PI*2);
     for(let i=0;i<24;i++){
@@ -101,7 +101,7 @@
           const y=(-dx*sin*cy+dy*distance-dz*cos*cy)/(l*depth*vertical);
           const face=Math.max(.16,Math.abs(Math.cos(q.yaw-angle)));
           const hw=scale*w*face/(2*depth*vertical*aspect),hh=scale*h/(2*depth*vertical);
-          if(!o.lamp)rects.push({x,y,hw,hh});
+          rects.push({x,y,hw,hh});
           // Avoid a single giant foreground fragment overwhelming the opening.
           penalty+=Math.max(0,hw-1.15)*.07+Math.max(0,hh-1.15)*.07;
         }
@@ -464,7 +464,7 @@
         particleRevealEnabled: false,
         enableThreeShaderIntegration: false
       });
-      if(cleanupEnabled&&LumaSplatsSemantics?.FOREGROUND!==undefined)splat.semanticsMask=LumaSplatsSemantics.FOREGROUND;
+      if(cleanupEnabled&&item.id!=="9c6e8bac-3b79-4f39-a605-58999d33c33c"&&LumaSplatsSemantics?.FOREGROUND!==undefined)splat.semanticsMask=LumaSplatsSemantics.FOREGROUND;
       state.splats.push(splat);
       let settled = false;
       const settle = error => {
@@ -472,7 +472,7 @@
         settled = true;
         finishCapture(error);
       };
-      splat.onLoad = () => {if(cleanupEnabled&&LumaSplatsSemantics?.FOREGROUND!==undefined)splat.semanticsMask=LumaSplatsSemantics.FOREGROUND;settle(null);};
+      splat.onLoad = () => {if(cleanupEnabled&&item.id!=="9c6e8bac-3b79-4f39-a605-58999d33c33c"&&LumaSplatsSemantics?.FOREGROUND!==undefined)splat.semanticsMask=LumaSplatsSemantics.FOREGROUND;settle(null);};
       splat.onError = error => {
         console.warn("Gaussian capture failed to load", item.id, error);
         settle(error || new Error("Capture failed"));

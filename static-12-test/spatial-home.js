@@ -34,7 +34,7 @@
   const captures = originalCaptures;
   const countLabel = document.getElementById("capture-count");
   if(countLabel)countLabel.textContent = "Loading graffiti captures…";
-  const localSlots = [{"id":"f0137e7f","name":"Freeman Alley","author":"matousekfoto","url":"https://superspl.at/scene/f0137e7f","licensed":true},{"id":"f4897475","name":"Artillery Passage","author":"David Fletcher","url":"https://superspl.at/scene/f4897475","licensed":true,"orientation":"z-flip"},{"id":"suvilahti-skatepark","name":"Suvilahti DIY — cropped skatepark","author":"flyAR","url":"https://flyar.fi/work/suvilahti-diy-project-eternal","localOnly":true,"orientation":"none","splatSize":1.20,"opacityBoost":1.10}];
+  const localSlots = [{"id":"f0137e7f","name":"Freeman Alley","author":"matousekfoto","url":"https://superspl.at/scene/f0137e7f","licensed":true},{"id":"f4897475","name":"Artillery Passage","author":"David Fletcher","url":"https://superspl.at/scene/f4897475","licensed":true,"fullDetail":true,"orientation":"z-flip"},{"id":"suvilahti-skatepark","name":"Suvilahti DIY — cropped skatepark","author":"flyAR","url":"https://flyar.fi/work/suvilahti-diy-project-eternal","localOnly":true,"fullDetail":true,"orientation":"none"}];
   // A new spatial composition, not just a shuffled ring. Each model is
   // assigned a fresh size role independently of identity on every reload.
   const random=()=>Math.random(),between=(a,b)=>a+(b-a)*random();
@@ -85,7 +85,7 @@
     const aspectFactor=Math.max(1,.66/aspect),vertical=Math.tan(43*Math.PI/360);
     const samples=[...originalCaptures,...localSlots].map((item,i)=>{
       const lamp=item.id==="9c6e8bac-3b79-4f39-a605-58999d33c33c",alley=item.id==="f0137e7f",artillery=item.id==="f4897475";
-      return {pose:poses[i],scale:assignedScales.get(item.id),w:lamp?1.12:alley?2.65:artillery?1.45:1.95,h:lamp?1.65:alley?1.55:artillery?1.55:1.35,lamp};
+      return {pose:poses[i],scale:assignedScales.get(item.id),w:lamp?1.12:alley?2.65:artillery?2.75:1.95,h:lamp?1.65:alley?1.55:artillery?1.75:1.35,lamp};
     });
     const candidates=[],start=between(0,Math.PI*2);
     for(let i=0;i<24;i++){
@@ -154,6 +154,9 @@
     state.splats.forEach(splat => {
       try { splat.dispose(); } catch (_) {}
     });
+    if(state.sparkRenderer){
+      try{state.sparkRenderer.removeFromParent();state.sparkRenderer.geometry.dispose();state.sparkRenderer.material.dispose();}catch(_){}
+    }
     state.clearGpuQueue?.();
     state.renderer.renderLists?.dispose();
     state.renderer.dispose();
@@ -162,15 +165,17 @@
   }
 
   async function startViewer(token) {
-    const [THREE, controlsModule, lumaModule] = await Promise.all([
+    const [THREE, controlsModule, lumaModule, sparkModule] = await Promise.all([
       import("three"),
       import("three/addons/controls/OrbitControls.js"),
-      import("@lumaai/luma-web")
+      import("@lumaai/luma-web"),
+      import("@sparkjsdev/spark")
     ]);
     if (token !== generation || !isHomeVisible()) return;
 
     const { OrbitControls } = controlsModule;
     const { LumaSplatsThree, LumaSplatsSemantics } = lumaModule;
+    const { SparkRenderer, SplatMesh } = sparkModule;
     const scene = new THREE.Scene();
     const backgroundColor = () => document.documentElement.dataset.theme === "dark" ? 0x030303 : 0xffffff;
     scene.background = new THREE.Color(backgroundColor());
@@ -228,9 +233,24 @@
 
     const state = {
       renderer, controls, splats: [], raf: 0, disposed: false,
-      loadingTimeout: 0, resize: null, visibility: null, theme: null
+      loadingTimeout: 0, resize: null, visibility: null, theme: null,
+      sparkRenderer: null
     };
     active = state;
+    let needsRender = true;
+    const sparkRenderer = new SparkRenderer({
+      renderer,
+      pagedExtSplats: true,
+      lodSplatScale: touchDevice ? .95 : 1.30,
+      minSortIntervalMs: 100,
+      onDirty: () => {
+        if(state.disposed)return;
+        needsRender = true;
+        if(!state.raf)animate();
+      }
+    });
+    scene.add(sparkRenderer);
+    state.sparkRenderer = sparkRenderer;
     const localMeshes = new Map(), usedFiles = new Set(), lumaHolders=new Map();let originalLoaded=0,solo=new URLSearchParams(location.search).get("solo");
     if(![...captures,...localSlots].some(x=>x.id===solo))solo=null;
     const cleanupEnabled=new URLSearchParams(location.search).get('cleanup')!=='off';
@@ -265,6 +285,7 @@
     function countLocal() {
       if(countLabel) countLabel.textContent = (originalLoaded+localMeshes.size) + " / "+targetCount+" loaded · "+mode;
     }
+    function cacheKeyForSlot(item){return item.id==="suvilahti-skatepark"?"suvilahti-skatepark-full-resolution-v2":item.id;}
     if(localList){
       localList.replaceChildren();
       const all=document.createElement("button");all.type="button";all.textContent="Show all captures";all.onclick=()=>{solo=null;applySolo();};localList.append(all);
@@ -274,36 +295,67 @@
       for(let i=0;i<localSlots.length;i++){
         const item=localSlots[i], row=document.createElement("div");row.className="capture-row";
         const name=document.createElement(item?"a":"span");name.textContent=item?item.name:"Additional unique scan "+(i-3);
-        if(item){name.href=item.url;name.target="_blank";name.rel="noopener noreferrer";name.title=item.author+" — source";if(item.licensed)name.textContent+=" · "+item.author+" (CC BY 4.0, reduced preview)";}
-        const input=document.createElement("input");input.type="file";input.accept=".ply";input.setAttribute("aria-label","Select "+name.textContent+" PLY");
-        const msg=document.createElement("small");msg.textContent=item?"Choose downloaded standard PLY":"Use a cleared, different graffiti capture";
+        if(item){name.href=item.url;name.target="_blank";name.rel="noopener noreferrer";name.title=item.author+" — source";if(item.licensed)name.textContent+=" · "+item.author+(item.fullDetail?" (CC BY 4.0, full-detail source)":" (CC BY 4.0, reduced preview)");}
+        const input=document.createElement("input");input.type="file";input.accept=".ply";input.setAttribute("aria-label","Select "+name.textContent+" PLY");if(item.id==="f4897475")input.hidden=true;
+        const msg=document.createElement("small");msg.textContent=item?.id==="suvilahti-skatepark"?"Select original skateparkdeleted.ply (364 MB) for full detail":item?.id==="f4897475"?"Original 5M Gaussian source · streamed detail":"Choose downloaded standard PLY";
         const flip=document.createElement("button");flip.type="button";flip.textContent="Flip Y";flip.disabled=true;
         flip.onclick=()=>{const mesh=localMeshes.get(i)?.mesh;if(mesh){mesh.scale.y*=-1;needsRender=true;}};
         const yaw=document.createElement("button");yaw.type="button";yaw.textContent="Turn 90°";yaw.disabled=true;
         yaw.onclick=()=>{const mesh=localMeshes.get(i)?.mesh;if(mesh){mesh.rotation.y+=Math.PI/2;needsRender=true;}};
+        const cacheKey=item?.id==="suvilahti-skatepark"?"suvilahti-skatepark-full-resolution-v2":item?.id;
+        const removeLocalEntry=index=>{
+          const old=localMeshes.get(index);if(!old)return;
+          orbit.remove(old.holder);
+          const oldSplats=old.sparkMeshes||[old.mesh];
+          oldSplats.forEach(splat=>{try{splat?.dispose?.();}catch(_){}});
+          state.splats=state.splats.filter(splat=>!oldSplats.includes(splat));
+          usedFiles.delete(old.key);localMeshes.delete(index);
+        };
         const importFile=async(file)=>{
           if(!file)return false;
           if(localBusy){msg.textContent="Finish the current import first";input.value="";return;}
           const key=file.name+":"+file.size;
           if(usedFiles.has(key)&&localMeshes.get(i)?.key!==key){msg.textContent="This file is already in the composition";input.value="";return;}
           if(captures.length+localMeshes.size>=targetCount&&!localMeshes.has(i)){msg.textContent=targetCount+" capture limit reached";return;}
-          localBusy=true;input.disabled=true;msg.textContent="Reading Gaussian PLY…";
+          localBusy=true;input.disabled=true;msg.textContent="Reading full-resolution Gaussian PLY…";
           try{
+            if(item?.id==="suvilahti-skatepark"){
+              const mesh=new SplatMesh({
+                stream:file.stream(),streamLength:file.size,fileName:file.name,
+                lod:"quality",extSplats:true,
+                onProgress:event=>{if(event.lengthComputable)msg.textContent="Decoding original scan · "+Math.round(event.loaded/event.total*100)+"%";}
+              });
+              mesh.lodScale=touchDevice?.90:1.25;
+              await mesh.initialized;
+              if(state.disposed){mesh.dispose();return false;}
+              removeLocalEntry(i);
+              const holder=new THREE.Group(),normalize=new THREE.Group();
+              const poseIndex=captures.length+i,pose=poses[poseIndex];
+              holder.position.set(pose.x,pose.y,pose.z);holder.rotation.set(pose.pitch,pose.yaw,pose.roll);
+              holder.scale.setScalar(assignedScales.get(item.id));
+              normalize.scale.setScalar(.07404674);
+              normalize.position.set(.000436,.0324,-.000989);
+              normalize.add(mesh);holder.add(normalize);orbit.add(holder);
+              state.splats.push(mesh);localMeshes.set(i,{mesh:normalize,holder,key,poseIndex,sparkMeshes:[mesh]});usedFiles.add(key);applySolo();
+              needsRender=true;countLocal();updateProgress();flip.disabled=yaw.disabled=false;
+              const n=mesh.splats?.getNumSplats?.()||1543464;
+              msg.textContent=n.toLocaleString()+" full-resolution Gaussians · spherical harmonics · adaptive LOD";
+              return true;
+            }
             const {readPly,makeGaussian}=await import("./local-gaussians.js?v=skatepark-density-3");
             const data=await readPly(file,touchDevice?140000:320000,cleanupEnabled);
-            if(state.disposed)return;
-            const mesh=makeGaussian(THREE,data,item.orientation||"x-flip",item.splatSize||1,item.opacityBoost||1), holder=new THREE.Group(),old=localMeshes.get(i);
-            if(old){orbit.remove(old.holder);old.mesh.dispose();usedFiles.delete(old.key);state.splats=state.splats.filter(x=>x!==old.mesh);}
-            const poseIndex=captures.length+i,pose=poses[poseIndex];holder.position.set(pose.x,pose.y,pose.z);holder.rotation.set(pose.pitch,pose.yaw,pose.roll);// The long, narrow arch reads smaller than other models at equal bounding-box size.
-            const calibratedScale=assignedScales.get(item.id);
-            holder.scale.setScalar(calibratedScale);
+            if(state.disposed)return false;
+            const mesh=makeGaussian(THREE,data,item.orientation||"x-flip",item.splatSize||1,item.opacityBoost||1);
+            removeLocalEntry(i);
+            const holder=new THREE.Group(),poseIndex=captures.length+i,pose=poses[poseIndex];
+            holder.position.set(pose.x,pose.y,pose.z);holder.rotation.set(pose.pitch,pose.yaw,pose.roll);
+            holder.scale.setScalar(assignedScales.get(item.id));
             holder.add(mesh);orbit.add(holder);state.splats.push(mesh);localMeshes.set(i,{mesh,holder,key,poseIndex});usedFiles.add(key);applySolo();
-            // Preserve the random camera framing as additional scans arrive.
-            mesh.updateForCamera(camera,renderer,performance.now());needsRender=true;countLocal();updateProgress();flip.disabled=yaw.disabled=false;
+            needsRender=true;countLocal();updateProgress();flip.disabled=yaw.disabled=false;
             msg.textContent=data.count.toLocaleString()+" / "+data.sourceCount.toLocaleString()+" Gaussians"+(data.removed?" · "+data.removed.toLocaleString()+" floaters filtered":"");return true;
           }catch(err){msg.textContent=err.message||String(err);return false;}finally{localBusy=false;input.disabled=false;input.value="";}
         };
-        input.onchange=async()=>{const file=input.files?.[0];if(await importFile(file)&&item.localOnly){const cached=await localPreviewCache(item.id,file);msg.textContent+=cached?" · remembered on this device":" · local preview";}};importers.push(importFile);
+        input.onchange=async()=>{const file=input.files?.[0];if(await importFile(file)&&item.localOnly){const cached=await localPreviewCache(cacheKey,file);msg.textContent+=cached?" · full source remembered on this device":" · local only";}};importers.push(importFile);
         messages.push(msg);row.append(name,input,flip,yaw,soloButton(item.id),msg);localList.append(row);
       }
     }
@@ -320,7 +372,7 @@
       for(const i of ambiguous)matched.delete(i);
       bulk.disabled=true;let loaded=0;
       try{
-        for(const [i,file] of matched){bulkStatus.textContent="Importing "+localSlots[i].name+"…";if(await importers[i](file)){loaded++;if(localSlots[i].localOnly)await localPreviewCache(localSlots[i].id,file);}}
+        for(const [i,file] of matched){bulkStatus.textContent="Importing "+localSlots[i].name+"…";if(await importers[i](file)){loaded++;if(localSlots[i].localOnly)await localPreviewCache(cacheKeyForSlot(localSlots[i]),file);}}
         bulkStatus.textContent=loaded+" imported. "+(unknown.length||ambiguous.length?"Unmatched or ambiguous filenames: select their named slots manually.":"");
       }finally{bulk.disabled=false;bulk.value="";}
     };
@@ -334,11 +386,45 @@
         if(localMeshes.has(i)||captures.length+localMeshes.size>=targetCount)continue;
         const id=localSlots[i].id;
         if(localSlots[i].localOnly){
-          if(messages[i])messages[i].textContent="Choose suvilahti-skatepark-preview.ply once; saved locally, never uploaded.";
-          const file=await localPreviewCache(id);
+          const cacheKey=cacheKeyForSlot(localSlots[i]);
+          if(messages[i])messages[i].textContent="Select original skateparkdeleted.ply (364 MB) once · full 1.54M source, cached privately on this device.";
+          const file=await localPreviewCache(cacheKey);
           if(file&&!state.disposed&&!localMeshes.has(i)){
             while(localBusy&&!state.disposed)await new Promise(r=>setTimeout(r,100));
-            if(!state.disposed&&!localMeshes.has(i)&&await importers[i](file)&&messages[i])messages[i].textContent+=" · remembered locally";
+            if(!state.disposed&&!localMeshes.has(i)&&await importers[i](file)&&messages[i])messages[i].textContent+=" · original remembered locally";
+          }
+          continue;
+        }
+        if(id==="f4897475"){
+          if(messages[i])messages[i].textContent="Loading original 5M-Gaussian scan · high-detail streamed LOD…";
+          const holder=new THREE.Group(),normalize=new THREE.Group(),meshes=[];
+          const poseIndex=captures.length+i,pose=poses[poseIndex];
+          holder.position.set(pose.x,pose.y,pose.z);holder.rotation.set(pose.pitch,pose.yaw,pose.roll);
+          holder.scale.setScalar(assignedScales.get(id));
+          const factor=4.2/14.938400268554688;
+          const center={x:-.388,y:-.971,z:-.666};
+          normalize.scale.setScalar(factor);
+          normalize.rotation.z=Math.PI;
+          normalize.position.set(center.x*factor,center.y*factor,-center.z*factor);
+          holder.add(normalize);orbit.add(holder);
+          try{
+            for(let j=0;j<5;j++){
+              const url="./models/artillery/artillery-0_"+j+"-lod.rad";
+              const mesh=new SplatMesh({url,paged:true,lodScale:touchDevice?.95:1.25});
+              await mesh.initialized;
+              if(state.disposed){mesh.dispose();return;}
+              normalize.add(mesh);meshes.push(mesh);state.splats.push(mesh);
+              if(messages[i])messages[i].textContent="Artillery Passage · "+(j+1)+"/5 full-detail regions ready";
+              needsRender=true;if(!state.raf)animate();
+            }
+            localMeshes.set(i,{mesh:normalize,holder,key:"artillery-full-rad-v1",poseIndex,sparkMeshes:meshes});
+            usedFiles.add("artillery-full-rad-v1");applySolo();countLocal();updateProgress();
+            if(messages[i])messages[i].textContent="5M-source scan · streamed detail · CC BY 4.0";
+            flip.disabled=yaw.disabled=false;
+          }catch(error){
+            orbit.remove(holder);meshes.forEach(mesh=>{try{mesh.dispose();}catch(_){}});
+            state.splats=state.splats.filter(mesh=>!meshes.includes(mesh));
+            if(messages[i])messages[i].textContent="High-detail Artillery load failed · "+(error.message||String(error));
           }
           continue;
         }
@@ -406,7 +492,6 @@
     let previousTick = 0;
     let tickInterval = 1000 / 60;
     let pendingResolution = false;
-    let needsRender = true;
     if(new URLSearchParams(location.search).get("count")!=="6")setTimeout(loadHostedModels,1500);
     const targetInterval = 1000 / 60;
     let sampleStart = 0, renderedFrames = 0, blockedFrames = 0, cpuCost = 0, longTicks = 0, tickCount = 0;
@@ -599,7 +684,7 @@
       if (moving) orbit.rotation.y += delta * orbitSpeed;
       needsRender = false;
       controls.update();
-      for(const {mesh} of localMeshes.values()) mesh.updateForCamera(camera,renderer,now);
+      for(const {mesh} of localMeshes.values()) if(typeof mesh.updateForCamera==="function")mesh.updateForCamera(camera,renderer,now);
       renderer.render(scene, camera);
       submitFrame();
       renderedFrames++;

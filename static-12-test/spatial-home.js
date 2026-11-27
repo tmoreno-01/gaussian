@@ -36,7 +36,7 @@
   if(countLabel)countLabel.textContent = "Loading graffiti captures…";
   const touchDevice = matchMedia("(any-pointer: coarse)").matches;
   const allLocalSlots = [{"id":"f0137e7f","name":"Freeman Alley","author":"matousekfoto","url":"https://superspl.at/scene/f0137e7f","licensed":true},{"id":"f4897475","name":"Artillery Passage","author":"David Fletcher","url":"https://superspl.at/scene/f4897475","licensed":true,"fullDetail":true,"orientation":"z-flip"},{"id":"suvilahti-skatepark","name":"Suvilahti DIY — cropped skatepark","author":"flyAR","url":"https://flyar.fi/work/suvilahti-diy-project-eternal","localOnly":true,"fullDetail":true,"orientation":"none"}];
-  const localSlots = touchDevice ? allLocalSlots.filter(item => !item.fullDetail) : allLocalSlots;
+  const localSlots = touchDevice ? allLocalSlots.filter(item => item.id !== "f4897475") : allLocalSlots;
   // A new spatial composition, not just a shuffled ring. Each model is
   // assigned a fresh size role independently of identity on every reload.
   const random=()=>Math.random(),between=(a,b)=>a+(b-a)*random();
@@ -72,7 +72,7 @@
     // The alley's narrow geometry needs a substantial footprint.
     if(id==="f0137e7f")return Math.min(6.2,Math.max(3.1,role*between(1.28,1.62)));
     if(id==="suvilahti-skatepark")return .8*Math.min(4.6,Math.max(3.6,role*1.55));
-    if(id==="f4897475") return between(1.1, 1.7);
+    if(id==="f4897475") return between(.22, .34);
     return Math.min(5.35,role*between(.96,1.20));
   }
   // Sample each model's scale once: opening camera selection and loading
@@ -299,7 +299,7 @@
         const name=document.createElement(item?"a":"span");name.textContent=item?item.name:"Additional unique scan "+(i-3);
         if(item){name.href=item.url;name.target="_blank";name.rel="noopener noreferrer";name.title=item.author+" — source";if(item.licensed)name.textContent+=" · "+item.author+(item.fullDetail?" (CC BY 4.0, full-detail source)":" (CC BY 4.0, reduced preview)");}
         const input=document.createElement("input");input.type="file";input.accept=".ply";input.setAttribute("aria-label","Select "+name.textContent+" PLY");if(item.id==="f4897475")input.hidden=true;
-        const msg=document.createElement("small");msg.textContent=item?.id==="suvilahti-skatepark"?"Select original skateparkdeleted.ply (364 MB) for full detail":item?.id==="f4897475"?"Original 5M Gaussian source · streamed detail":"Choose downloaded standard PLY";
+        const msg=document.createElement("small");msg.textContent=item?.id==="suvilahti-skatepark"?"Choose skatepark preview or original PLY":item?.id==="f4897475"?"Original 5M Gaussian source · streamed detail":"Choose downloaded standard PLY";
         const flip=document.createElement("button");flip.type="button";flip.textContent="Flip Y";flip.disabled=true;
         flip.onclick=()=>{const mesh=localMeshes.get(i)?.mesh;if(mesh){mesh.scale.y*=-1;needsRender=true;}};
         const yaw=document.createElement("button");yaw.type="button";yaw.textContent="Turn 90°";yaw.disabled=true;
@@ -321,7 +321,7 @@
           if(captures.length+localMeshes.size>=targetCount&&!localMeshes.has(i)){msg.textContent=targetCount+" capture limit reached";return;}
           localBusy=true;input.disabled=true;msg.textContent="Reading full-resolution Gaussian PLY…";
           try{
-            if(item?.id==="suvilahti-skatepark"){
+            if(item?.id==="suvilahti-skatepark" && !touchDevice && file.size > 64000000){
               if(!SplatMesh)throw Error("Spark renderer did not load; the other captures are still available.");
               const mesh=new SplatMesh({
                 stream:file.stream(),streamLength:file.size,fileName:file.name,
@@ -370,7 +370,7 @@
       if(localBusy)return;
       const files=Array.from(bulk.files||[]), unknown=[], matched=new Map(), ambiguous=[];
       for(const file of files){
-        const hits=aliases.map((r,i)=>r.test(file.name)?i:-1).filter(i=>i>=0);
+        const hits=localSlots.map((item,i)=>aliases[allLocalSlots.indexOf(item)].test(file.name)?i:-1).filter(i=>i>=0);
         if(hits.length!==1 || hits[0]>=localSlots.length){unknown.push(file.name);continue;}
         const i=hits[0];if(matched.has(i)){ambiguous.push(i);continue;}matched.set(i,file);
       }
@@ -386,14 +386,15 @@
     // Models prepared from public, downloadable CC BY sources. Raw repository
     // fallback also works when a bot commit does not trigger a Pages rebuild.
     async function loadHostedModels(){
-      for(let i=0;i<localSlots.length;i++){
+      for(const i of localSlots.map((_,index)=>index).sort((a,b)=>Number(localSlots[b].localOnly===true)-Number(localSlots[a].localOnly===true))){
         if(state.disposed)return;
         if(localMeshes.has(i)||captures.length+localMeshes.size>=targetCount)continue;
         const id=localSlots[i].id;
         if(localSlots[i].localOnly){
           const cacheKey=cacheKeyForSlot(localSlots[i]);
-          if(messages[i])messages[i].textContent="Select original skateparkdeleted.ply (364 MB) once · full 1.54M source, cached privately on this device.";
-          const file=await localPreviewCache(cacheKey);
+          if(messages[i])messages[i].textContent="Choose the cropped skatepark preview or original PLY once on this device.";
+          const preview = await localPreviewCache(id);
+          const file = touchDevice ? (preview || await localPreviewCache(cacheKey)) : (await localPreviewCache(cacheKey) || preview);
           if(file&&!state.disposed&&!localMeshes.has(i)){
             while(localBusy&&!state.disposed)await new Promise(r=>setTimeout(r,100));
             if(!state.disposed&&!localMeshes.has(i)&&await importers[i](file)&&messages[i])messages[i].textContent+=" · original remembered locally";

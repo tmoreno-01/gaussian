@@ -33,8 +33,8 @@
   const sixOnly = new URLSearchParams(location.search).get("count") === "6" || extras.length===0;
   const captures = originalCaptures;
   const countLabel = document.getElementById("capture-count");
-  if(countLabel)countLabel.textContent = "Loading 7 unique captures…";
-  const localSlots = [{"id":"f0137e7f","name":"Freeman Alley","author":"matousekfoto","url":"https://superspl.at/scene/f0137e7f","licensed":true}];
+  if(countLabel)countLabel.textContent = "Loading graffiti captures…";
+  const localSlots = [{"id":"f0137e7f","name":"Freeman Alley","author":"matousekfoto","url":"https://superspl.at/scene/f0137e7f","licensed":true},{"id":"f4897475","name":"Artillery Passage","author":"David Fletcher","url":"https://superspl.at/scene/f4897475","licensed":true},{"id":"suvilahti-skatepark","name":"Suvilahti DIY — cropped skatepark","author":"flyAR","url":"https://flyar.fi/work/suvilahti-diy-project-eternal","localOnly":true}];
   // A new spatial composition, not just a shuffled ring. Each model is
   // assigned a fresh size role independently of identity on every reload.
   const random=()=>Math.random(),between=(a,b)=>a+(b-a)*random();
@@ -63,12 +63,14 @@
   }
   const poses=Array.from({length:targetCount},(_,i)=>makePose(i));
   function captureScale(id,role){
-    // Smaller accent with a compact piece of the surrounding wall.
+    // Small foreground-only lamp-post accent.
     if(id==="9c6e8bac-3b79-4f39-a605-58999d33c33c"){
       return random()<.18?between(1.85,2.35):Math.min(1.85,role*between(.55,.80));
     }
     // The alley's narrow geometry needs a substantial footprint.
     if(id==="f0137e7f")return Math.min(6.2,Math.max(3.1,role*between(1.28,1.62)));
+    if(id==="suvilahti-skatepark")return Math.min(3.8,Math.max(2.0,role*.85));
+    if(id==="f4897475")return Math.min(4.6,Math.max(2.0,role));
     return Math.min(5.35,role*between(.96,1.20));
   }
   // Sample each model's scale once: opening camera selection and loading
@@ -233,32 +235,27 @@
     if(![...captures,...localSlots].some(x=>x.id===solo))solo=null;
     const cleanupEnabled=new URLSearchParams(location.search).get('cleanup')!=='off';
     const lampId="9c6e8bac-3b79-4f39-a605-58999d33c33c";
-    const cropParam=new URLSearchParams(location.search).get("lampCrop");
-    const lampCrop={value:cropParam!==null&&Number.isFinite(Number(cropParam))&&cropParam.trim()!==""?Math.max(.25,Math.min(4,Number(cropParam))):1.0};
     function setCaptureFilter(splat,id){
-      if(!cleanupEnabled)return;
-      const foreground=LumaSplatsSemantics?.FOREGROUND;
-      if(id!==lampId){if(foreground!==undefined)splat.semanticsMask=foreground;return;}
-      if(cropParam==="off")return;
-      // Keep the full semantic foreground, plus nearby background. Softly
-      // suppress the surrounding scan in object space, independent of pose.
+      if((cleanupEnabled||id===lampId)&&LumaSplatsSemantics?.FOREGROUND!==undefined)
+        splat.semanticsMask=LumaSplatsSemantics.FOREGROUND;
+    }
+    // The uploaded skatepark stays on this device until redistribution rights
+    // are established. Remember its selected file in IndexedDB.
+    async function localPreviewCache(id,file){
+      let db;
       try{
-        if(typeof splat.setShaderHooks!=="function")throw Error("Shader hooks unavailable");
-        splat.setShaderHooks({vertexShaderHooks:{
-          additionalUniforms:{lampCropRadius:["float",lampCrop]},
-          getSplatColor:`(vec4 rgba, vec3 position, uint layersBitmask) {
-            if ((layersBitmask & 2u) != 0u) return rgba;
-            float distanceFromCore = length(position * vec3(0.88, 1.15, 1.0));
-            float keep = 1.0 - smoothstep(lampCropRadius * 0.76, lampCropRadius * 1.24, distanceFromCore);
-            return vec4(rgba.rgb, rgba.a * keep);
-          }`
-        }});
-        if(foreground!==undefined&&LumaSplatsSemantics?.BACKGROUND!==undefined)
-          splat.semanticsMask=foreground|LumaSplatsSemantics.BACKGROUND;
-      }catch(e){
-        console.warn("Lamp-post background crop unavailable",e);
-        if(foreground!==undefined)splat.semanticsMask=foreground;
-      }
+        if(!globalThis.indexedDB)return null;
+        db=await new Promise((resolve,reject)=>{
+          const req=indexedDB.open("graffiti-composition-private-v1",1);
+          req.onupgradeneeded=()=>req.result.createObjectStore("previews");
+          req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+        });
+        return await new Promise((resolve,reject)=>{
+          const tx=db.transaction("previews",file?"readwrite":"readonly"),store=tx.objectStore("previews");
+          const req=file?store.put(file,id):store.get(id);
+          tx.oncomplete=()=>resolve(file?true:req.result);tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
+        });
+      }catch(e){console.warn("Local preview cache unavailable",e);return null;}finally{db?.close();}
     }
     function applySolo(){for(const [id,holder] of lumaHolders)holder.visible=solo===null||solo===id;for(const [i,entry] of localMeshes)entry.holder.visible=solo===null||solo===localSlots[i].id;needsRender=true;}
     function soloButton(id){const b=document.createElement('button');b.type='button';b.textContent='Solo';b.onclick=()=>{solo=solo===id?null:id;applySolo();};return b;}
@@ -273,12 +270,6 @@
       const all=document.createElement("button");all.type="button";all.textContent="Show all captures";all.onclick=()=>{solo=null;applySolo();};localList.append(all);
       const names=["Faraday Street / Bentoghoul","Stevenson Place / July","Faraday Street / June","Graffiti Palace / Lamp post","Faraday Street / April","STIK Door / Brick Lane"];
       originalCaptures.forEach((item,i)=>{const row=document.createElement("div");row.className="capture-row";const a=document.createElement("a");a.href="https://lumalabs.ai/capture/"+item.id;a.textContent=names[i]+" · Luma";a.target="_blank";a.rel="noopener";const btn=soloButton(item.id);row.append(a,btn);
-        if(item.id===lampId&&cleanupEnabled&&cropParam!=="off"){
-          const label=document.createElement("label");label.textContent="Wall crop ";
-          const range=document.createElement("input");range.type="range";range.min=".25";range.max="4";range.step=".05";range.value=String(lampCrop.value);range.setAttribute("aria-label","Lamp-post surrounding geometry radius");
-          range.oninput=()=>{lampCrop.value=Number(range.value);needsRender=true;};
-          label.append(range);row.append(label);
-        }
         localList.append(row);});
       for(let i=0;i<localSlots.length;i++){
         const item=localSlots[i], row=document.createElement("div");row.className="capture-row";
@@ -303,7 +294,7 @@
             if(state.disposed)return;
             const mesh=makeGaussian(THREE,data), holder=new THREE.Group(),old=localMeshes.get(i);
             if(old){orbit.remove(old.holder);old.mesh.dispose();usedFiles.delete(old.key);state.splats=state.splats.filter(x=>x!==old.mesh);}
-            const poseIndex=old?.poseIndex??(captures.length+localMeshes.size),pose=poses[poseIndex];holder.position.set(pose.x,pose.y,pose.z);holder.rotation.set(pose.pitch,pose.yaw,pose.roll);// The long, narrow arch reads smaller than other models at equal bounding-box size.
+            const poseIndex=captures.length+i,pose=poses[poseIndex];holder.position.set(pose.x,pose.y,pose.z);holder.rotation.set(pose.pitch,pose.yaw,pose.roll);// The long, narrow arch reads smaller than other models at equal bounding-box size.
             const calibratedScale=assignedScales.get(item.id);
             holder.scale.setScalar(calibratedScale);
             holder.add(mesh);orbit.add(holder);state.splats.push(mesh);localMeshes.set(i,{mesh,holder,key,poseIndex});usedFiles.add(key);applySolo();
@@ -312,12 +303,12 @@
             msg.textContent=data.count.toLocaleString()+" / "+data.sourceCount.toLocaleString()+" Gaussians"+(data.removed?" · "+data.removed.toLocaleString()+" floaters filtered":"");return true;
           }catch(err){msg.textContent=err.message||String(err);return false;}finally{localBusy=false;input.disabled=false;input.value="";}
         };
-        input.onchange=()=>importFile(input.files?.[0]);importers.push(importFile);
+        input.onchange=async()=>{const file=input.files?.[0];if(await importFile(file)&&item.localOnly){const cached=await localPreviewCache(item.id,file);msg.textContent+=cached?" · remembered on this device":" · local preview";}};importers.push(importFile);
         messages.push(msg);row.append(name,input,flip,yaw,soloButton(item.id),msg);localList.append(row);
       }
     }
     const bulk=document.getElementById("bulk-ply"), bulkStatus=document.getElementById("bulk-status");
-    const aliases=[/freeman|f0137e7f/i];
+    const aliases=[/freeman|f0137e7f/i,/artillery|f4897475/i,/suvilahti|skatepark/i];
     if(bulk)bulk.onchange=async()=>{
       if(localBusy)return;
       const files=Array.from(bulk.files||[]), unknown=[], matched=new Map(), ambiguous=[];
@@ -329,7 +320,7 @@
       for(const i of ambiguous)matched.delete(i);
       bulk.disabled=true;let loaded=0;
       try{
-        for(const [i,file] of matched){bulkStatus.textContent="Importing "+localSlots[i].name+"…";if(await importers[i](file))loaded++;}
+        for(const [i,file] of matched){bulkStatus.textContent="Importing "+localSlots[i].name+"…";if(await importers[i](file)){loaded++;if(localSlots[i].localOnly)await localPreviewCache(localSlots[i].id,file);}}
         bulkStatus.textContent=loaded+" imported. "+(unknown.length||ambiguous.length?"Unmatched or ambiguous filenames: select their named slots manually.":"");
       }finally{bulk.disabled=false;bulk.value="";}
     };
@@ -342,6 +333,15 @@
         if(state.disposed)return;
         if(localMeshes.has(i)||captures.length+localMeshes.size>=targetCount)continue;
         const id=localSlots[i].id;
+        if(localSlots[i].localOnly){
+          if(messages[i])messages[i].textContent="Choose suvilahti-skatepark-preview.ply once; saved locally, never uploaded.";
+          const file=await localPreviewCache(id);
+          if(file&&!state.disposed&&!localMeshes.has(i)){
+            while(localBusy&&!state.disposed)await new Promise(r=>setTimeout(r,100));
+            if(!state.disposed&&!localMeshes.has(i)&&await importers[i](file)&&messages[i])messages[i].textContent+=" · remembered locally";
+          }
+          continue;
+        }
         if(messages[i])messages[i].textContent="Checking automatic preview…";
         try{
           const options=()=>({cache:"force-cache",signal:AbortSignal.timeout(30000)});
@@ -507,7 +507,7 @@
         settled = true;
         finishCapture(error);
       };
-      splat.onLoad = () => {if(cleanupEnabled&&item.id!==lampId&&LumaSplatsSemantics?.FOREGROUND!==undefined)splat.semanticsMask=LumaSplatsSemantics.FOREGROUND;settle(null);};
+      splat.onLoad = () => {setCaptureFilter(splat,item.id);settle(null);};
       splat.onError = error => {
         console.warn("Gaussian capture failed to load", item.id, error);
         settle(error || new Error("Capture failed"));

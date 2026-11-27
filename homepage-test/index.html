@@ -88,8 +88,9 @@ import { LumaSplatsThree } from '@lumaai/luma-web';
 /*
   PRODUCTION: add the two public Cloudflare R2 object URLs below.
   The same range reader works with local ZIPs for testing and public R2 ZIPs
-  for the real site. R2 must allow GET/HEAD from lifeafterlogic.com and expose
-  Content-Range and Content-Length. Frames are fetched on demand; the whole ZIP
+  for the real site. R2 must allow GET/HEAD from both https://lifeafterlogic.com and
+  https://tmoreno-01.github.io, and expose Content-Range and Content-Length.
+  Frames are fetched on demand; the whole ZIP
   is never downloaded at once.
 */
 const REMOTE_SEQUENCE_URLS = ["",""];

@@ -35,7 +35,10 @@
   const countLabel = document.getElementById("capture-count");
   if(countLabel)countLabel.textContent = "Loading graffiti captures…";
   const touchDevice = matchMedia("(any-pointer: coarse)").matches;
-  const includeAlley = new URLSearchParams(location.search).get("alley") === "1";
+  const appleMobile = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const includeAlley = !appleMobile && !matchMedia("(pointer: coarse)").matches &&
+    new URLSearchParams(location.search).get("count") !== "6";
   const localSlots = includeAlley ? [{id:"f0137e7f",name:"Freeman Alley",author:"matousekfoto",url:"https://superspl.at/scene/f0137e7f",licensed:true}] : [];
   // A new spatial composition, not just a shuffled ring. Each model is
   // assigned a fresh size role independently of identity on every reload.

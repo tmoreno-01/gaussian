@@ -13,7 +13,7 @@ import * as THREE from 'three';import {OrbitControls} from 'three/addons/control
 const $=id=>document.getElementById(id);
 const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);renderer.setClearColor(0x030303);document.body.prepend(renderer.domElement);
 const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(43,innerWidth/innerHeight,.025,400),controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.08;controls.maxDistance=120;
-const world=new THREE.Group();scene.add(world);
+const world=new THREE.Group();scene.add(world);if(matchMedia('(pointer: coarse)').matches)$('tier').value='mobile';
 
 const vertexShader=`
 uniform sampler2D depthTex,colorTex;
@@ -102,7 +102,7 @@ function validate(m,base,files){
  m.chunks.forEach((c,i)=>{if(c.start!==at||!Number.isInteger(c.count)||c.count<1||c.count>120||at+c.count>m.num_frames||!/^\d+\.lal$/.test(c.file)||files.get(base+c.file)?.size!==c.bytes)throw Error('Missing or invalid chunk '+c.file);index.fill(i,at,at+c.count);at+=c.count;});
  if(at!==m.num_frames)throw Error('Incomplete sequence');return index;
 }
-function clear(){generation++;for(const s of states){if(s.root)world.remove(s.root);if(s.geo){s.geo.deleteAttribute('position');s.geo.dispose();}s.mat?.dispose();s.d?.dispose();s.c?.dispose();s.chunks.clear();}states=[];geometryCache.clear();newWorker();loading=false;world.rotation.y=0;last=0;}
+function clear(){generation++;for(const s of states){if(s.root)world.remove(s.root);if(s.geo){s.geo.dispose();}s.mat?.dispose();s.d?.dispose();s.c?.dispose();s.chunks.clear();}states=[];geometryCache.clear();newWorker();loading=false;world.rotation.y=0;last=0;}
 async function open(filesIn){
  clear();const gen=generation;loading=true;$('intro').hidden=false;$('message').textContent='Scanning the folder…';$('errors').textContent='';
  const files=new Map(Array.from(filesIn,f=>[f.webkitRelativePath||f.name,f])),tier=$('tier').value,keys=[...files.keys()];

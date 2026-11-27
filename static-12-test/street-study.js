@@ -21,7 +21,7 @@
     { id: "a2b66f9e-d157-4037-8e46-9a90062de171", scale: 0.46 },
     { id: "cda9d556-cf29-4f2d-b402-b971e1a08773", scale: 0.189 },
     { id: "184d8b07-f374-4831-a6df-8e747e7ffc48", scale: 0.22, contextRadius: 1.15 },
-    { id: "cf77b996-5ec4-48fc-b1d6-7aa620dd163c", scale: 0.39, contextRadius: 0.78 },
+    { id: "cf77b996-5ec4-48fc-b1d6-7aa620dd163c", scale: 0.39 },
 
   ];
 
@@ -305,7 +305,7 @@
         splat.semanticsMask = LumaSplatsSemantics.ALL;
         return;
       }
-      if((cleanupEnabled||id===lampId)&&LumaSplatsSemantics?.FOREGROUND!==undefined)
+      if((cleanupEnabled||id===lampId||id==="cf77b996-5ec4-48fc-b1d6-7aa620dd163c")&&LumaSplatsSemantics?.FOREGROUND!==undefined)
         splat.semanticsMask=LumaSplatsSemantics.FOREGROUND;
     }
     function applySolo(){for(const [id,holder] of lumaHolders)holder.visible=solo===null||solo===id;for(const [i,entry] of localMeshes)entry.holder.visible=solo===null||solo===localSlots[i].id;needsRender=true;}

@@ -31,10 +31,25 @@
     tilt:[.11,-.08,.06,-.13,.09,-.05][j], outer:true
   }));
   const sixOnly = new URLSearchParams(location.search).get("count") === "6" || extras.length===0;
-  const captures = sixOnly ? originalCaptures : [...originalCaptures,...extras];
+  const captures = originalCaptures;
   const countLabel = document.getElementById("capture-count");
   if(countLabel)countLabel.textContent = captures.length + " unique captures · " + (captures.length===12?"complete":"additional scans pending");
-  const localSlots = [{"id":"de67a02f","name":"Leake Street tunnel","author":"artfletch","url":"https://superspl.at/scene/de67a02f"},{"id":"77ec8209","name":"Nexels Graffiti","author":"transkatgirl","url":"https://superspl.at/scene/77ec8209"},{"id":"92d261b7","name":"Skatepark bowl","author":"dragonheart000","url":"https://superspl.at/scene/92d261b7"},{"id":"0da683d4","name":"Stone arch bridge","author":"ethan3111","url":"https://superspl.at/scene/0da683d4"},{"id":"309265EC-DDEB-4EB2-BA5F-BC329B0258EB","name":"Bayshore Roundhouse","author":"Polycam source · reuse terms unverified","url":"https://poly.cam/explore/capture/309265EC-DDEB-4EB2-BA5F-BC329B0258EB/bayshore%2Broundhouse"},{"id":"ddc7cb49-4350-47e1-aad4-6cee046e3574","name":"Lostplacetest3","author":"Polycam source · reuse terms unverified","url":"https://poly.cam/explore/capture/ddc7cb49-4350-47e1-aad4-6cee046e3574/Lostplacetest3"}];
+  const localSlots = [{"id":"de67a02f","name":"Leake Street tunnel","author":"artfletch","url":"https://superspl.at/scene/de67a02f"},{"id":"77ec8209","name":"Nexels Graffiti","author":"transkatgirl","url":"https://superspl.at/scene/77ec8209"},{"id":"92d261b7","name":"Skatepark bowl","author":"dragonheart000","url":"https://superspl.at/scene/92d261b7"},{"id":"0da683d4","name":"Stone arch bridge","author":"ethan3111","url":"https://superspl.at/scene/0da683d4"},{"id":"309265EC-DDEB-4EB2-BA5F-BC329B0258EB","name":"Bayshore Roundhouse","author":"Polycam source · reuse terms unverified","url":"https://poly.cam/explore/capture/309265EC-DDEB-4EB2-BA5F-BC329B0258EB/bayshore%2Broundhouse"},{"id":"ddc7cb49-4350-47e1-aad4-6cee046e3574","name":"Lostplacetest3","author":"Polycam source · reuse terms unverified","url":"https://poly.cam/explore/capture/ddc7cb49-4350-47e1-aad4-6cee046e3574/Lostplacetest3"},{"id":"caaa1fb4","name":"Painted coastal bunker","author":"bernfra","url":"https://superspl.at/scene/caaa1fb4"}];
+  // Each refresh gets a fresh but deliberately bounded composition.
+  const random=()=>Math.random(), between=(a,b)=>a+(b-a)*random();
+  const params=new URLSearchParams(location.search);
+  const modes=["staggered orbit","rising spiral","spatial constellation","tilted orbit"];
+  const mode=modes[Math.floor(random()*modes.length)],phase=between(0,Math.PI*2),orbitSpeed=between(.025,.052)*(random()<.5?-1:1);
+  const layoutTilt=mode==="tilted orbit"?between(-.38,.38):between(-.12,.12);
+  const slotsOrder=Array.from({length:13},(_,i)=>i);
+  for(let i=slotsOrder.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[slotsOrder[i],slotsOrder[j]]=[slotsOrder[j],slotsOrder[i]];}
+  function makePose(i){
+    const k=slotsOrder[i%slotsOrder.length],a=phase+k/slotsOrder.length*Math.PI*2+between(-.13,.13);
+    const radius=mode==="spatial constellation"?between(3.0,6.2):mode==="rising spiral"?between(4.1,5.7):between(3.9,6.0);
+    const y=mode==="rising spiral"?(k-6)*.52+between(-.25,.25):mode==="spatial constellation"?between(-2.0,2.0):between(-.85,1.1);
+    return {x:Math.sin(a)*radius,y,z:Math.cos(a)*radius,yaw:a+Math.PI+between(-.48,.48),pitch:between(-.16,.16),roll:between(-.13,.13),scale:between(.74,1.25)};
+  }
+  const poses=Array.from({length:13},(_,i)=>makePose(i));
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   let active = null;
   let loading = false;
@@ -87,7 +102,8 @@
     scene.background = new THREE.Color(backgroundColor());
 
     const camera = new THREE.PerspectiveCamera(43, (canvasRoot.clientWidth || window.innerWidth) / Math.max(1, canvasRoot.clientHeight || window.innerHeight), .05, 120);
-    camera.position.set(...(sixOnly ? [2.55,1.55,9.2] : [2.65,2.2,12.1]));
+    const cameraAngle=between(0,Math.PI*2), cameraDistance=between(14,17.5)*Math.max(1,.85/camera.aspect);
+    camera.position.set(Math.sin(cameraAngle)*cameraDistance,between(1.1,4.7),Math.cos(cameraAngle)*cameraDistance);
     camera.lookAt(0, 0, 0);
 
     const renderer = new THREE.WebGLRenderer({
@@ -126,7 +142,7 @@
     controls.dampingFactor = touchDevice ? .13 : .105;
     controls.enablePan = true;
     controls.minDistance = 5.2;
-    controls.maxDistance = sixOnly ? 15.5 : 24;
+    controls.maxDistance = Math.max(28,cameraDistance*1.8);
     controls.minPolarAngle = .35;
     controls.maxPolarAngle = Math.PI - .35;
     controls.rotateSpeed = .48;
@@ -134,26 +150,26 @@
     controls.panSpeed = .45;
 
     const orbit = new THREE.Group();
-    scene.add(orbit);
+    scene.add(orbit);orbit.rotation.x=layoutTilt;
 
     const state = {
       renderer, controls, splats: [], raf: 0, disposed: false,
       loadingTimeout: 0, resize: null, visibility: null, theme: null
     };
     active = state;
-    const localMeshes = new Map(), usedFiles = new Set();
+    const localMeshes = new Map(), usedFiles = new Set();let originalLoaded=0;
     let localBusy = false;
     const importers=[],messages=[];
     const localList = document.getElementById("local-captures");
     function countLocal() {
-      if(countLabel) countLabel.textContent = (captures.length+localMeshes.size) + " / 12 captures · " + localMeshes.size + " / 6 new scans loaded";
+      if(countLabel) countLabel.textContent = (originalLoaded+localMeshes.size) + " / 12 loaded · "+mode;
     }
     if(localList){
       localList.replaceChildren();
-      for(let i=0;i<6;i++){
+      for(let i=0;i<localSlots.length;i++){
         const item=localSlots[i], row=document.createElement("div");row.className="capture-row";
         const name=document.createElement(item?"a":"span");name.textContent=item?item.name:"Additional unique scan "+(i-3);
-        if(item){name.href=item.url;name.target="_blank";name.rel="noopener noreferrer";name.title=item.author+" — source";if(i<4)name.textContent+=" · "+item.author+" (CC BY 4.0, reduced preview)";}
+        if(item){name.href=item.url;name.target="_blank";name.rel="noopener noreferrer";name.title=item.author+" — source";if(i<4||i===6)name.textContent+=" · "+item.author+" (CC BY 4.0, reduced preview)";}
         const input=document.createElement("input");input.type="file";input.accept=".ply";input.setAttribute("aria-label","Select "+name.textContent+" PLY");
         const msg=document.createElement("small");msg.textContent=item?"Choose downloaded standard PLY":"Use a cleared, different graffiti capture";
         const flip=document.createElement("button");flip.type="button";flip.textContent="Flip";flip.disabled=true;
@@ -173,11 +189,9 @@
             if(state.disposed)return;
             const mesh=makeGaussian(THREE,data), holder=new THREE.Group(),old=localMeshes.get(i);
             if(old){orbit.remove(old.holder);old.mesh.dispose();usedFiles.delete(old.key);state.splats=state.splats.filter(x=>x!==old.mesh);}
-            const angle=(i+.5)/6*Math.PI*2;
-            holder.position.set(Math.sin(angle)*[5.85,6.1,5.6,6.25,5.8,6.05][i],[1.18,.92,1.42,1.05,1.25,.84][i],Math.cos(angle)*[5.85,6.1,5.6,6.25,5.8,6.05][i]);
-            holder.rotation.y=angle+Math.PI;holder.rotation.z=(i%2?1:-1)*.045;holder.scale.setScalar([.98,1.08,.83,.98,.95,.91][i]);
+            const pose=poses[6+i];holder.position.set(pose.x,pose.y,pose.z);holder.rotation.set(pose.pitch,pose.yaw,pose.roll);holder.scale.setScalar(pose.scale);
             holder.add(mesh);orbit.add(holder);state.splats.push(mesh);localMeshes.set(i,{mesh,holder,key});usedFiles.add(key);
-            if(localMeshes.size===1&&!old){camera.position.set(2.65,2.2,12.1);controls.maxDistance=24;controls.update();}
+            // Preserve the random camera framing as additional scans arrive.
             mesh.updateForCamera(camera,renderer,performance.now());needsRender=true;countLocal();flip.disabled=yaw.disabled=false;
             msg.textContent=data.count.toLocaleString()+" / "+data.sourceCount.toLocaleString()+" Gaussians";return true;
           }catch(err){msg.textContent=err.message||String(err);return false;}finally{localBusy=false;input.disabled=false;input.value="";}
@@ -187,7 +201,7 @@
       }
     }
     const bulk=document.getElementById("bulk-ply"), bulkStatus=document.getElementById("bulk-status");
-    const aliases=[/leake|de67a02f/i,/nexels|77ec8209/i,/skate|92d261b7/i,/stone|arch|bridge|0da683d4/i,/bayshore|roundhouse|309265ec/i,/lostplace|ddc7cb49/i];
+    const aliases=[/leake|de67a02f/i,/nexels|77ec8209/i,/skate|92d261b7/i,/stone|arch|bridge|0da683d4/i,/bayshore|roundhouse|309265ec/i,/lostplace|ddc7cb49/i,/bunker|caaa1fb4/i];
     if(bulk)bulk.onchange=async()=>{
       if(localBusy)return;
       const files=Array.from(bulk.files||[]), unknown=[], matched=new Map(), ambiguous=[];
@@ -208,9 +222,9 @@
     // Models prepared from public, downloadable CC BY sources. Raw repository
     // fallback also works when a bot commit does not trigger a Pages rebuild.
     async function loadHostedModels(){
-      for(let i=0;i<4;i++){
+      for(const i of [0,2,3,6,1]){
         if(state.disposed)return;
-        if(localMeshes.has(i))continue;
+        if(localMeshes.has(i)||captures.length+localMeshes.size>=12)continue;
         const id=localSlots[i].id;
         if(messages[i])messages[i].textContent="Checking automatic preview…";
         try{
@@ -339,8 +353,8 @@
       inFlight = Math.max(0, inFlight - 1);
       completed++;
       needsRender = true;
-      if (error) failed++;
-      updateProgress();
+      if (error) failed++;else originalLoaded++;
+      countLocal();updateProgress();
       // Yield between capture initialisations so decoding and GPU uploads do
       // not repeatedly interrupt touch input or the loading animation.
       if (!loadTimer && nextIndex < captures.length) {
@@ -352,14 +366,8 @@
     }
 
     function addCapture(item, index) {
-      const angle = (index % 6) / 6 * Math.PI * 2 + (item.outer ? Math.PI/6 : 0);
-      const holder = new THREE.Group();
-      const radius = item.outer ? [5.85,6.1,5.6,6.25,5.8,6.05][index%6] : 4.25;
-      holder.position.set(Math.sin(angle) * radius, item.y, Math.cos(angle) * radius);
-      holder.rotation.y = angle + Math.PI + (item.outer ? [.18,-.13,.24,-.17,.12,-.22][index%6] : 0);
-      holder.rotation.x = item.tilt;
-      holder.rotation.z = (index % 2 ? 1 : -1) * (item.outer ? .07 : .025);
-      holder.scale.setScalar(item.scale);
+      const holder = new THREE.Group(),pose=poses[index];
+      holder.position.set(pose.x,pose.y,pose.z);holder.rotation.set(pose.pitch,pose.yaw,pose.roll);holder.scale.setScalar(item.scale*pose.scale);
       orbit.add(holder);
 
       const splat = new LumaSplatsThree({
@@ -447,7 +455,7 @@
       lastRenderedAt = now;
       // Anchor the next deadline to the actual presentation opportunity.
       nextDue = continuous ? now + interval : 0;
-      if (moving) orbit.rotation.y += delta * .035;
+      if (moving) orbit.rotation.y += delta * orbitSpeed;
       needsRender = false;
       controls.update();
       for(const {mesh} of localMeshes.values()) mesh.updateForCamera(camera,renderer,now);

@@ -46,3 +46,13 @@ All temporary captures are credited to @Volt_Edge. Replace them with LifeAfterLo
 3. Export a compact per-frame or 4D splat sequence.
 4. Replace the temporary static captures with those dynamic scene assets.
 5. Keep the same shared orbit, with the splat data animating independently in each scene.
+
+## 4D Splat Studio
+
+Open the [4D Splat Studio viewer](https://tmoreno-01.github.io/gaussian/ring-studio.html) to load multiple original `*_full_vda.zip` reconstructions at once.
+
+- Each reconstruction is rendered as its own animated 4D depth splat.
+- Scenes are arranged in a slowly rotating ring by default.
+- Each scene has an independent scale control; scenes can be hidden or isolated.
+- The viewer supports standard ZIP and ZIP64 archives and decodes frames locally.
+- Render a 360-degree MP4 loop at landscape, square or portrait sizes. MP4 encoding uses Mediabunny and the browser's WebCodecs support; source ZIPs remain on the user's device.

@@ -9,34 +9,27 @@ permissions:
 jobs:
   prepare:
     runs-on: ubuntu-latest
-    timeout-minutes: 18
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Fetch pinned open-source conversion tools
+      - name: Install the open-source SOG converter
         run: |
-          git clone --quiet https://github.com/buildoak/tortuise.git /tmp/splat-tools
-          git -C /tmp/splat-tools checkout --quiet d114fff4882cd18e9723907fd0b7d63f3e226033
-          python -m pip install numpy Pillow
-      - name: Prepare only publicly downloadable CC BY captures
+          python -m pip install numpy
+          npm install --global @playcanvas/splat-transform@3.12.0
+      - name: Convert the original Artillery Passage streamed SOG
         run: |
+          git clone --depth 1 https://github.com/willeastcott/splat-walk.git /tmp/artillery-source
+          cd /tmp/artillery-source/public/scene
+          splat-transform lod-meta.json -H 0 /tmp/f4897475-full.ply
+          cd "$GITHUB_WORKSPACE"
           mkdir -p prepared
-          for id in f4897475; do
-            if timeout 140 bash /tmp/splat-tools/scripts/supersplat-dl.sh "$id" "/tmp/$id.ply"; then
-              python static-12-test/prepare-preview.py "/tmp/$id.ply" "prepared/$id.ply" || echo "Conversion rejected $id"
-            else
-              echo "::warning::Public viewer asset unavailable or unsupported for $id"
-            fi
-            rm -f "/tmp/$id.ply"
-          done
-          ls -lh prepared
-          test -n "$(find prepared -name '*.ply' -print -quit)"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: graffiti-preview-assets
-          path: prepared/*.ply
-          retention-days: 1
+          python static-12-test/prepare-preview.py /tmp/f4897475-full.ply prepared/f4897475.ply
+          rm -f /tmp/f4897475-full.ply
+          ls -lh prepared/f4897475.ply
+          test -s prepared/f4897475.ply
+          test "$(stat -c%s prepared/f4897475.ply)" -lt 20000000
   publish:
     needs: prepare
     runs-on: ubuntu-latest
@@ -51,18 +44,13 @@ jobs:
         with:
           name: graffiti-preview-assets
           path: prepared
-      - name: Commit prepared previews to test folder only
+      - name: Commit prepared Artillery preview to test folder only
         run: |
           mkdir -p static-12-test/models
-          for id in f4897475; do
-            if [ -f "prepared/$id.ply" ]; then
-              test "$(stat -c%s "prepared/$id.ply")" -lt 20000000
-              cp "prepared/$id.ply" "static-12-test/models/$id.ply"
-            fi
-          done
-          git add static-12-test/models/*.ply
+          cp prepared/f4897475.ply static-12-test/models/f4897475.ply
+          git add static-12-test/models/f4897475.ply
           git diff --cached --quiet && exit 0
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Add available unique graffiti preview models to test only"
+          git commit -m "Add converted Artillery Passage preview to test only"
           git push origin main

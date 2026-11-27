@@ -18,7 +18,7 @@
     { id: "94f2efd7-f65d-4b7f-b455-536e95643bad", scale: .4536, y: -.10, tilt: .035 },
     { id: "3adabd81-8ef0-4257-92cb-a2929ef8aa8a", scale: .68, y: .16, tilt: -.025 }
 ,
-    { id: "a2b66f9e-d157-4037-8e46-9a90062de171", scale: 0.46 },
+    { id: "a2b66f9e-d157-4037-8e46-9a90062de171", scale: 0.368 },
     { id: "cda9d556-cf29-4f2d-b402-b971e1a08773", scale: 0.189 },
     { id: "184d8b07-f374-4831-a6df-8e747e7ffc48", scale: 0.22 },
     { id: "cf77b996-5ec4-48fc-b1d6-7aa620dd163c", scale: 0.39, showNearbyWall: true },
@@ -61,14 +61,16 @@
   const layoutTilt=0;
   // Vary the overall composition scale too, rather than always having the
   // same size distribution. Keep a reasonable floor for secondary pieces.
-  const scaleMood=between(1.00,1.30);
+  const scaleMood=between(.92,1.38);
   const roles=Array.from({length:targetCount},(_,i)=>
     (i<2?between(2.65,4.35):i<5?between(1.90,3.50):between(1.25,2.55))*scaleMood);
   
   const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
   shuffle(roles);
   const order=shuffle(Array.from({length:targetCount},(_,i)=>i));
-  const horizontalStretch = between(.89, 1.12);
+  const horizontalStretch = between(.78, 1.28);
+  const heightPhase = between(0, Math.PI * 2);
+  const heightAmplitude = between(.12, .55);
   function makePose(i){
     const k=order[i%targetCount],a=phase+k/targetCount*Math.PI*2+between(-.25,.25);
     let radius,y,x,z;
@@ -76,8 +78,9 @@
     else if(mode==="wide constellation"){radius=between(2.5,4.4);y=between(-.70,.70);}
     else if(mode==="layered islands"){radius=k%3===0?between(1.4,2.4):between(2.8,4.1);y=between(-.58,.58);}
     else{radius=between(2.4,4.0);y=between(-.42,.42);}
+    y += Math.sin(a + heightPhase) * heightAmplitude;
     x=Math.sin(a)*radius*horizontalStretch;z=Math.cos(a)*radius/horizontalStretch;
-    return {x,y,z,yaw:a+Math.PI+between(-1.18,1.18),pitch:between(-.15,.15),roll:between(-.12,.12),scale:roles[i%targetCount]};
+    return {x,y,z,yaw:a+Math.PI+between(-1.18,1.18),pitch:between(-.21,.21),roll:between(-.18,.18),scale:roles[i%targetCount]};
   }
   const poses=Array.from({length:targetCount},(_,i)=>makePose(i));
   const pipesIndex = originalCaptures.findIndex(item => item.id === "a2b66f9e-d157-4037-8e46-9a90062de171");

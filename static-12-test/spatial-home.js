@@ -33,16 +33,16 @@
   const sixOnly = new URLSearchParams(location.search).get("count") === "6" || extras.length===0;
   const captures = originalCaptures;
   const countLabel = document.getElementById("capture-count");
-  if(countLabel)countLabel.textContent = captures.length + " unique captures · " + (captures.length===12?"complete":"additional scans pending");
-  const localSlots = [{"id":"de67a02f","name":"Leake Street tunnel","author":"artfletch","url":"https://superspl.at/scene/de67a02f","licensed":true},{"id":"77ec8209","name":"Nexels Graffiti","author":"transkatgirl","url":"https://superspl.at/scene/77ec8209","licensed":true},{"id":"92d261b7","name":"Skatepark bowl","author":"dragonheart000","url":"https://superspl.at/scene/92d261b7","licensed":true},{"id":"0da683d4","name":"Stone arch bridge","author":"ethan3111","url":"https://superspl.at/scene/0da683d4","licensed":true},{"id":"309265EC-DDEB-4EB2-BA5F-BC329B0258EB","name":"Bayshore Roundhouse","author":"Polycam source · reuse terms unverified","url":"https://poly.cam/explore/capture/309265EC-DDEB-4EB2-BA5F-BC329B0258EB/bayshore%2Broundhouse","licensed":false},{"id":"ddc7cb49-4350-47e1-aad4-6cee046e3574","name":"Lostplacetest3","author":"Polycam source · reuse terms unverified","url":"https://poly.cam/explore/capture/ddc7cb49-4350-47e1-aad4-6cee046e3574/Lostplacetest3","licensed":false},{"id":"caaa1fb4","name":"Painted coastal bunker","author":"bernfra","url":"https://superspl.at/scene/caaa1fb4","licensed":true},{"id":"f0137e7f","name":"Freeman Alley","author":"matousekfoto","url":"https://superspl.at/scene/f0137e7f","licensed":true},{"id":"b3a9bb2b","name":"Dilapidated Parking Lot","author":"bneg","url":"https://superspl.at/scene/b3a9bb2b","licensed":true},{"id":"ecdefcaa","name":"Skate-park","author":"florian_schill","url":"https://superspl.at/scene/ecdefcaa","licensed":true},{"id":"1c7ac632","name":"Kulturlokschuppen railway depot","author":"simonbethke","url":"https://superspl.at/scene/1c7ac632","licensed":true},{"id":"e49fcd4e","name":"Topsham street scan","author":"nbvs","url":"https://superspl.at/scene/e49fcd4e","licensed":true}];
+  if(countLabel)countLabel.textContent = "Loading 11 unique captures…";
+  const localSlots = [{"id":"de67a02f","name":"Leake Street tunnel","author":"artfletch","url":"https://superspl.at/scene/de67a02f","licensed":true},{"id":"92d261b7","name":"Skatepark bowl","author":"dragonheart000","url":"https://superspl.at/scene/92d261b7","licensed":true},{"id":"0da683d4","name":"Stone arch bridge","author":"ethan3111","url":"https://superspl.at/scene/0da683d4","licensed":true},{"id":"f0137e7f","name":"Freeman Alley","author":"matousekfoto","url":"https://superspl.at/scene/f0137e7f","licensed":true},{"id":"b3a9bb2b","name":"Dilapidated Parking Lot","author":"bneg","url":"https://superspl.at/scene/b3a9bb2b","licensed":true}];
   // A new spatial composition, not just a shuffled ring. Each model is
   // assigned a fresh size role independently of identity on every reload.
   const random=()=>Math.random(),between=(a,b)=>a+(b-a)*random();
-  const targetCount=15;
+  const targetCount=originalCaptures.length+localSlots.length;
   const modes=["broken orbit","rising spiral","dense cluster","wide constellation","vertical wheel","layered islands"];
   const mode=modes[Math.floor(random()*modes.length)],phase=between(0,Math.PI*2),orbitSpeed=between(.019,.065)*(random()<.5?-1:1);
   const layoutTilt=mode==="vertical wheel"?between(.9,1.35):mode==="broken orbit"?between(-.52,.52):between(-.23,.23);
-  const roles=Array.from({length:targetCount},(_,i)=>i<3?between(1.75,2.45):i<8?between(.9,1.45):between(.40,.80));
+  const roles=Array.from({length:targetCount},(_,i)=>i<3?between(1.75,2.45):i<7?between(.9,1.45):between(.40,.80));
   const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
   shuffle(roles);
   const order=shuffle(Array.from({length:targetCount},(_,i)=>i));
@@ -51,7 +51,7 @@
     let radius,y,x,z;
     if(mode==="dense cluster"){radius=between(1.6,4.5);y=between(-1.6,1.6);}
     else if(mode==="wide constellation"){radius=between(2.7,7.2);y=between(-3.1,3.1);}
-    else if(mode==="rising spiral"){radius=between(2.9,5.6);y=(k-7)*.64+between(-.35,.35);}
+    else if(mode==="rising spiral"){radius=between(2.9,5.6);y=(k-(targetCount-1)/2)*.82+between(-.35,.35);}
     else if(mode==="vertical wheel"){radius=between(3.1,5.5);y=between(-.55,.55);}
     else if(mode==="layered islands"){radius=k%3===0?between(1.2,2.4):between(4.5,6.8);y=(k%3-1)*2.2+between(-.5,.5);}
     else{radius=between(3.3,6.2);y=between(-1.1,1.2);}
@@ -216,7 +216,7 @@
       }
     }
     const bulk=document.getElementById("bulk-ply"), bulkStatus=document.getElementById("bulk-status");
-    const aliases=[/leake|de67a02f/i,/nexels|77ec8209/i,/skate.?park.?bowl|92d261b7/i,/stone|arch|bridge|0da683d4/i,/bayshore|roundhouse|309265ec/i,/lostplace|ddc7cb49/i,/bunker|caaa1fb4/i,/freeman|f0137e7f/i,/parking|b3a9bb2b/i,/skate.?park(?!.*bowl)|ecdefcaa/i,/kulturlokschuppen|1c7ac632/i,/topsham|e49fcd4e/i];
+    const aliases=[/leake|de67a02f/i,/skate|92d261b7/i,/stone|arch|bridge|0da683d4/i,/freeman|f0137e7f/i,/parking|b3a9bb2b/i];
     if(bulk)bulk.onchange=async()=>{
       if(localBusy)return;
       const files=Array.from(bulk.files||[]), unknown=[], matched=new Map(), ambiguous=[];
@@ -237,7 +237,7 @@
     // Models prepared from public, downloadable CC BY sources. Raw repository
     // fallback also works when a bot commit does not trigger a Pages rebuild.
     async function loadHostedModels(){
-      for(const i of [0,2,3,7,8,9,10,11,1,6]){
+      for(let i=0;i<localSlots.length;i++){
         if(state.disposed)return;
         if(localMeshes.has(i)||captures.length+localMeshes.size>=targetCount)continue;
         const id=localSlots[i].id;
@@ -254,7 +254,7 @@
           if(ok&&messages[i])messages[i].textContent+=" · automatic · CC BY 4.0";
         }catch(e){if(messages[i]&&!localMeshes.has(i))messages[i].textContent="Automatic preview unavailable · "+e.message;}
       }
-      for(let i=4;i<6;i++)if(messages[i]&&!localMeshes.has(i))messages[i].textContent="Polycam model export and reuse permission not verified";
+
     }
 
     let nextIndex = 0;

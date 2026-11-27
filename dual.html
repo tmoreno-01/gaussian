@@ -1,0 +1,117 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Matter of Perspective / Dual motion test</title>
+<style>*{box-sizing:border-box}body{margin:0;background:#030303;color:#eee;font:13px Arial,sans-serif;overflow:hidden}canvas{display:block;touch-action:none}header,footer{position:fixed;left:0;right:0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:20px;pointer-events:none;z-index:2}header{top:0}footer{bottom:0;flex-wrap:wrap}header>* ,footer>*{pointer-events:auto}button,select,label.pick{font:inherit;background:#101010d9;color:#eee;border:1px solid #ffffff38;padding:9px 13px;cursor:pointer;border-radius:2px}input[type=file]{display:none}input[type=range]{accent-color:white;width:100px}#intro{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(520px,90vw);text-align:center;background:#080808ef;padding:28px;z-index:3}#intro[hidden]{display:none}h1{font-weight:400;font-size:clamp(25px,5vw,43px);letter-spacing:-.055em;margin:0 0 18px}p{color:#aaa;line-height:1.5}#loads{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:24px 0}#progress{color:#aaa;line-height:1.6;min-height:36px}#status{color:#aaa;font-size:11px}#settings{display:flex;align-items:center;gap:12px;flex-wrap:wrap}#names{position:fixed;bottom:19%;left:0;right:0;display:grid;grid-template-columns:1fr 1fr;text-align:center;color:#777;pointer-events:none;letter-spacing:.07em;font-size:11px}#names[hidden]{display:none}button:disabled{opacity:.4}@media(max-width:700px){header,footer{padding:12px}#settings{gap:6px}input[type=range]{width:65px}#names{bottom:25%}}</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.157.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.157.0/examples/jsm/"}}</script></head><body>
+<header><span>Matter of Perspective / dual motion</span><a href="./moving.html" style="color:#999">Single scene</a></header>
+<div id="intro"><h1>Two moving fragments.</h1><p>Load both original ZIPs. They stay on your device; all geometry is prepared before playback.</p><div id="loads"><label class="pick" for="left">01 / Graffiti artist</label><label class="pick" for="right">02 / Freight train</label></div><div id="progress" role="status">Choose both ZIPs to start.</div></div>
+<input id="left" type="file" accept=".zip"><input id="right" type="file" accept=".zip">
+<div id="names" hidden><span>01 / GRAFFITI ARTIST</span><span>02 / FREIGHT TRAIN</span></div>
+<footer><div id="settings"><button id="play" disabled>Pause</button><button id="orbit">Orbit on</button><label>Detail <select id="detail"><option value="1">Original</option><option value="2">Balanced</option><option value="4" selected>Fine</option></select></label><label>Size <input id="size" type="range" min=".45" max="1.8" step=".05" value=".85"></label><button id="reset">Reset view</button><button id="reload">Load ZIPs</button></div><div id="status">Awaiting both scenes</div></footer>
+<script type="module">
+import * as THREE from 'three';import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+const $=id=>document.getElementById(id);
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);renderer.setClearColor(0x030303);document.body.prepend(renderer.domElement);
+const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(43,innerWidth/innerHeight,.01,100);
+const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.08;controls.minDistance=2;controls.maxDistance=25;controls.maxPolarAngle=Math.PI*.85;controls.minPolarAngle=.25;
+function reset(){controls.target.set(0,0,0);camera.position.set(0,.15,Math.max(5.4,5.4/(camera.aspect/1.45)));controls.update();}reset();
+const shader={vertexShader:`
+uniform sampler2D pa,pb,ca,cb;
+uniform int gridW,gridH,samples;
+uniform float blend,span,sizeScale,pixelScale,cutoff,worldScale;
+out vec3 vColor;
+flat out float valid;
+struct Sample{vec3 p;vec3 c;float r;};
+Sample readPoint(ivec2 xy){
+ vec4 a=texelFetch(pa,xy,0),b=texelFetch(pb,xy,0);
+ vec3 x=texelFetch(ca,xy,0).rgb,y=texelFetch(cb,xy,0).rgb;
+ float gate=clamp(4.0*min(a.w,b.w),span*.009,span*.034);
+ bool match=distance(a.xyz,b.xyz)<gate && distance(x,y)<.20;
+ float t=match?blend:step(.5,blend);
+ return Sample(mix(a.xyz,b.xyz,t),mix(x,y,t),mix(a.w,b.w,t));
+}
+bool joined(Sample a,Sample b){
+ return -a.p.z<cutoff && -b.p.z<cutoff && distance(a.p,b.p)<clamp(3.0*min(a.r,b.r),span*.002,span*.022);
+}
+Sample halfPoint(Sample a,Sample b){return Sample(mix(a.p,b.p,.5),mix(a.c,b.c,.5),mix(a.r,b.r,.5));}
+void main(){
+ int id=gl_VertexID/samples,sub=gl_VertexID%samples;
+ ivec2 xy=ivec2(id%gridW,id/gridW);
+ Sample p=readPoint(xy);valid=(-p.p.z<cutoff)?1.:0.;
+ if(samples==2&&sub==1){sub=3;}
+ if(sub!=0){
+  if(sub==1){
+   if(xy.x+1>=gridW)valid=0.;else{Sample r=readPoint(xy+ivec2(1,0));if(joined(p,r))p=halfPoint(p,r);else valid=0.;}
+  }else if(sub==2){
+   if(xy.y+1>=gridH)valid=0.;else{Sample d=readPoint(xy+ivec2(0,1));if(joined(p,d))p=halfPoint(p,d);else valid=0.;}
+  }else{
+   if(xy.x+1>=gridW||xy.y+1>=gridH)valid=0.;else{
+    Sample r=readPoint(xy+ivec2(1,0)),d=readPoint(xy+ivec2(0,1)),q=readPoint(xy+ivec2(1,1));
+    if(joined(p,r)&&joined(p,d)&&joined(r,q)&&joined(d,q))p=halfPoint(halfPoint(p,r),halfPoint(d,q));else valid=0.;
+   }
+  }
+ }
+ vColor=p.c;
+ vec4 mv=modelViewMatrix*vec4(p.p,1.);
+ gl_Position=valid>.5?projectionMatrix*mv:vec4(2.,2.,2.,1.);
+ gl_PointSize=clamp(clamp(p.r*(samples==4?.88:1.12),span*.00032,span*.0042)*sizeScale*pixelScale*worldScale/max(.01,-mv.z),1.0,12.0);
+}`,fragmentShader:`
+in vec3 vColor;
+flat in float valid;
+out vec4 outColor;
+void main(){
+ if(valid<.5)discard;
+ vec2 q=(gl_PointCoord-.5)*2.;float r2=dot(q,q);
+ if(r2>1.)discard;
+ float alpha=1.-smoothstep(.58,1.,r2);
+ if(alpha<.08)discard;
+ outColor=vec4(vColor,alpha);
+}`};
+const workerSource="importScripts('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');\nlet cutoff=4;\nfunction decode(b,width,index){\n const u=new Uint8Array(b),h=new TextDecoder().decode(u.subarray(0,2048)),e=h.indexOf('end_header');\n if(e<0||!h.includes('binary_little_endian'))throw Error('Expected binary little-endian PLY');\n let start=e+10;if(u[start]===13)start++;if(u[start]===10)start++;\n const n=Number(h.match(/element vertex (\\d+)/)[1]);\n if(!h.includes('property float x\\nproperty float y\\nproperty float z\\nproperty uchar red\\nproperty uchar green\\nproperty uchar blue')||start+n*15!==b.byteLength||n%width!==0)throw Error('Unexpected PLY layout');\n const dv=new DataView(b),p=new Float32Array(n*4),c=new Uint8Array(n*4),min=[Infinity,Infinity,Infinity],max=[-Infinity,-Infinity,-Infinity];\n for(let j=0;j<n;j++){\n  const k=start+j*15,q=j*4;p[q]=dv.getFloat32(k,true);p[q+1]=-dv.getFloat32(k+4,true);p[q+2]=-dv.getFloat32(k+8,true);\n  for(let a=0;a<3;a++){const x=p[q+a];if(!Number.isFinite(x))throw Error('Non-finite point');if(-p[q+2]<cutoff){if(x<min[a])min[a]=x;if(x>max[a])max[a]=x;}c[q+a]=dv.getUint8(k+12+a);}c[q+3]=255;\n }\n const span=Math.max(...max.map((v,a)=>v-min[a])),center=max.map((v,a)=>(v+min[a])/2);\n function dist(j,t){const a=j*4,q=t*4,x=p[a]-p[q],y=p[a+1]-p[q+1],z=p[a+2]-p[q+2];return Math.sqrt(x*x+y*y+z*z);}\n for(let j=0;j<n;j++){const col=j%width;let dx=Infinity,dy=Infinity;if(col>0)dx=dist(j,j-1);if(col<width-1)dx=Math.min(dx,dist(j,j+1));if(j>=width)dy=dist(j,j-width);if(j+width<n)dy=Math.min(dy,dist(j,j+width));const lo=Math.min(dx,dy),hi=Math.max(dx,dy);p[j*4+3]=Math.max(span*.0003,Math.min(span*.012,Math.max(lo,Math.min(hi,lo*2.5))));}\n return {index,n,width,p,c,bounds:{span,center}};\n}\n\nfunction buildReference(samples){\n const n=samples[0].n,kCount=samples.length,ref=new Float32Array(n*4),rgb=new Uint8Array(n*4),confidence=new Float32Array(n);\n const buf=new Float32Array(kCount),ids=new Int32Array(kCount);\n function median(count){const a=buf.subarray(0,count);a.sort();const m=count>>1;return count%2?a[m]:(a[m-1]+a[m])*.5;}\n for(let j=0;j<n;j++){\n  const k=j*4;\n  for(let a=0;a<3;a++){for(let i=0;i<kCount;i++)buf[i]=samples[i].c[k+a];rgb[k+a]=Math.round(median(kCount));}\n  let count=0;\n  for(let i=0;i<kCount;i++){const c=samples[i].c,dr=c[k]-rgb[k],dg=c[k+1]-rgb[k+1],db=c[k+2]-rgb[k+2];if(dr*dr+dg*dg+db*db<1024)ids[count++]=i;}\n  confidence[j]=count/kCount;\n  if(count<Math.max(2,Math.ceil(kCount*.60)))continue;\n  for(let a=0;a<3;a++){for(let i=0;i<count;i++)buf[i]=samples[ids[i]].p[k+a];ref[k+a]=median(count);}\n }\n return {ref,rgb,confidence};\n}\nfunction stabilise(f,bg){\n const {ref,rgb,confidence}=bg,{p,c,n,width}=f;\n function colourError(j){const k=j*4,r=c[k]-rgb[k],g=c[k+1]-rgb[k+1],b=c[k+2]-rgb[k+2];return r*r+g*g+b*b;}\n const mask=new Float32Array(n);let locked=0;\n for(let j=0;j<n;j++){\n  if(confidence[j]<.62)continue;\n  const d=colourError(j);if(d>=32*32)continue;\n  let support=0,total=0;\n  const col=j%width;\n  for(const t of [col>1?j-2:-1,col<width-2?j+2:-1,j>=2*width?j-2*width:-1,j+2*width<n?j+2*width:-1]){\n   if(t<0)continue;total++;\n   if(confidence[t]>=.52&&colourError(t)<40*40)support++;\n  }\n  if(support<Math.min(2,total))continue;\n  const weight=Math.min(1,(confidence[j]-.52)/.23)*Math.min(1,(1024-d)/448);\n  mask[j]=weight;\n  if(weight>.65)locked++;\n }\n for(let j=0;j<n;j++){\n  const k=j*4,w=mask[j];if(w<=0)continue;\n  // Fixed background reference, with a soft falloff around moving foreground and uncertain pixels.\n  for(let a=0;a<3;a++)p[k+a]+=(ref[k+a]-p[k+a])*w;\n }\n f.locked=locked;\n // Recompute sampling radii from corrected geometry, not from flying points.\n function dist(j,t){const a=j*4,b=t*4,x=p[a]-p[b],y=p[a+1]-p[b+1],z=p[a+2]-p[b+2];return Math.sqrt(x*x+y*y+z*z);}\n const span=f.bounds.span;\n for(let j=0;j<n;j++){const col=j%width;let dx=Infinity,dy=Infinity;if(col>0)dx=dist(j,j-1);if(col<width-1)dx=Math.min(dx,dist(j,j+1));if(j>=width)dy=dist(j,j-width);if(j+width<n)dy=Math.min(dy,dist(j,j+width));const lo=Math.min(dx,dy),hi=Math.max(dx,dy);p[j*4+3]=Math.max(span*.0003,Math.min(span*.008,Math.max(lo,Math.min(hi,lo*2.5))));}\n return f;\n}\nfunction packHalf(p){\n const u=new Uint32Array(p.buffer,p.byteOffset,p.length),out=new Uint16Array(p.length);\n for(let i=0;i<u.length;i++){\n  const x=u[i],sign=(x>>>16)&0x8000,exp=((x>>>23)&255)-127+15,m=x&0x7fffff;\n  if(exp<=0){if(exp< -10){out[i]=sign;continue;}const v=(m|0x800000) >>> (1-exp);out[i]=sign|((v+0x1000)>>>13);}\n  else if(exp>=31)out[i]=sign|0x7bff;\n  else out[i]=sign|((exp<<10)+((m+0x1000)>>>13));\n }\n return out;\n}\nfunction emit(f,a,b){\n // Filter only small local errors with matching colours; retain abrupt changes and actual motion.\n const p=f.p.slice(),c=f.c;\n for(let k=0;k<p.length;k+=4){const x=p[k],y=p[k+1],z=p[k+2],r=p[k+3];let sx=x,sy=y,sz=z,total=1;\n  for(let pass=0;pass<2;pass++){const n=pass===0?a:b;if(!n||n.n!==f.n)continue;const dx=n.p[k]-x,dy=n.p[k+1]-y,dz=n.p[k+2]-z,dr=n.c[k]-c[k],dg=n.c[k+1]-c[k+1],db=n.c[k+2]-c[k+2];const limit=Math.min(f.bounds.span*.022,Math.max(f.bounds.span*.007,r*2.5));\n   if(dx*dx+dy*dy+dz*dz<limit*limit&&dr*dr+dg*dg+db*db<900){sx+=n.p[k]*.35;sy+=n.p[k+1]*.35;sz+=n.p[k+2]*.35;total+=.35;}}\n  p[k]=sx/total;p[k+1]=sy/total;p[k+2]=sz/total;\n  // Reject single-frame depth spikes only if both adjacent frames agree in geometry and colour.\n  if(a&&b){\n   const ax=a.p[k],ay=a.p[k+1],az=a.p[k+2],bx=b.p[k],by=b.p[k+1],bz=b.p[k+2];\n   const dx=ax-bx,dy=ay-by,dz=az-bz,span=f.bounds.span;\n   const colour=(q)=>{const r=q.c[k]-c[k],g=q.c[k+1]-c[k+1],b=q.c[k+2]-c[k+2];return r*r+g*g+b*b;};\n   const mx=(ax+bx)*.5,my=(ay+by)*.5,mz=(az+bz)*.5;\n   const ex=x-mx,ey=y-my,ez=z-mz;\n   if(dx*dx+dy*dy+dz*dz<(span*.018)**2&&colour(a)<650&&colour(b)<650&&ex*ex+ey*ey+ez*ez>(span*.035)**2){p[k]=mx;p[k+1]=my;p[k+2]=mz;}\n  }\n }\n const cc=c.slice(),half=packHalf(p);postMessage({type:'frame',index:f.index,n:f.n,width:f.width,bounds:f.bounds,p:half,c:cc},[half.buffer,cc.buffer]);\n}\nonmessage=async e=>{try{\n cutoff=e.data.cutoff;const zip=await JSZip.loadAsync(e.data.file),m=Object.keys(zip.files).find(n=>n.endsWith('sequence.json')),meta=m?JSON.parse(await zip.file(m).async('string')):{};\n const names=Object.keys(zip.files).filter(n=>/\\.ply$/i.test(n)&&!n.startsWith('__MACOSX/')).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));\n if(!names.length)throw Error('No PLY frames');\n const width=Number(meta.image_size)||512; if(!Number.isInteger(width)||width<2)throw Error('Invalid grid width');\n const sample=await zip.file(names[0]).async('arraybuffer'),first=decode(sample,width,0);\n if(first.n*20*names.length>700*1024*1024)throw Error('Sequence exceeds 700 MB decoded memory limit. Use a shorter test clip.');\n postMessage({type:'info',count:names.length,fps:Number(meta.fps)||30,n:first.n});\n const sampleCount=Math.min(21,names.length),samples=[first];\n for(let s=1;s<sampleCount;s++){\n  const i=Math.round(s*(names.length-1)/(sampleCount-1));\n  const frame=decode(await zip.file(names[i]).async('arraybuffer'),width,i);if(frame.n!==first.n)throw Error('Frame grid changed');samples.push(frame);\n  postMessage({type:'progress',message:'Analysing stationary background '+(s+1)+' / '+sampleCount+'…'});\n }\n postMessage({type:'progress',message:'Building stable background reference…'});\n const bg=sampleCount>=3?buildReference(samples):null;\n samples.length=0;\n let prev=null,cur=bg?stabilise(first,bg):first;\n for(let i=1;i<names.length;i++){let next=decode(await zip.file(names[i]).async('arraybuffer'),width,i);if(next.n!==first.n)throw Error('Frame grid changed');if(bg)next=stabilise(next,bg);emit(cur,prev,next);prev=cur;cur=next;}\n emit(cur,prev,null);postMessage({type:'done'});\n }catch(e){postMessage({type:'error',message:String(e)});}\n};";
+const states=[{name:'Graffiti artist',cutoff:4.4,x:-1.22},{name:'Freight train',cutoff:3.2,x:1.22}];let ready=false,playing=true,orbit=true,clock=0,last=0,report=0,ticks=0,dragging=false,loading=false;
+function texture(data,w,h,type){let t=new THREE.DataTexture(data,w,h,THREE.RGBAFormat,type);t.minFilter=t.magFilter=THREE.NearestFilter;t.generateMipmaps=false;t.needsUpdate=true;return t;}
+function prepare(s){return new Promise((resolve,reject)=>{
+ const url=URL.createObjectURL(new Blob([workerSource],{type:'text/javascript'})),w=new Worker(url);URL.revokeObjectURL(url);s.frames=[];
+ w.onerror=e=>{w.terminate();reject(Error(e.message));};
+ w.onmessage=e=>{const d=e.data;if(d.type==='info'){s.info=d;s.frames=new Array(d.count);}
+ else if(d.type==='progress')$('progress').textContent=s.name+' — '+d.message;
+ else if(d.type==='frame'){s.frames[d.index]=d;$('progress').textContent=s.name+' — preparing '+(d.index+1)+' / '+s.info.count+' frames';}
+ else if(d.type==='done'){w.terminate();if(s.frames.filter(Boolean).length!==s.info.count)reject(Error('Incomplete sequence'));else resolve();}
+ else if(d.type==='error'){w.terminate();reject(Error(d.message));}};
+ w.postMessage({file:s.file,cutoff:s.cutoff});
+});}
+function mount(s){
+ const f=s.frames[0],w=f.width,h=f.n/w,span=f.bounds.span,scale=2.05/span;
+ if(!Number.isFinite(scale)||scale<=0)throw Error('Invalid scene bounds');
+ s.root=new THREE.Group();s.root.position.x=s.x;scene.add(s.root);
+ s.geometry=new THREE.BufferGeometry();s.geometry.setAttribute('position',new THREE.BufferAttribute(new Float32Array(f.n*4*3),3));
+ const count=Number($('detail').value);s.geometry.setDrawRange(0,f.n*count);
+ const uniforms={pa:{value:null},pb:{value:null},ca:{value:null},cb:{value:null},gridW:{value:w},gridH:{value:h},samples:{value:count},blend:{value:0},span:{value:span},sizeScale:{value:Number($('size').value)},pixelScale:{value:renderer.domElement.height/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2)))},cutoff:{value:s.cutoff},worldScale:{value:scale}};
+ s.material=new THREE.ShaderMaterial({...shader,uniforms,glslVersion:THREE.GLSL3,depthWrite:true,depthTest:true,transparent:false,alphaToCoverage:true});
+ s.cloud=new THREE.Points(s.geometry,s.material);s.cloud.frustumCulled=false;s.cloud.scale.setScalar(scale);s.cloud.position.set(...f.bounds.center.map(v=>-v*scale));s.root.add(s.cloud);
+ s.slots=[];s.key='';frame(s,0,Math.min(1,s.info.count-1),0);
+}
+function slot(s,f,avoid){
+ let t=s.slots.find(x=>x.index===f.index);if(t)return t;
+ t=s.slots.find(x=>x.index!==avoid);
+ if(!t){t={p:texture(f.p,f.width,f.n/f.width,THREE.HalfFloatType),c:texture(f.c,f.width,f.n/f.width,THREE.UnsignedByteType)};s.slots.push(t);}
+ else{t.p.image.data=f.p;t.c.image.data=f.c;t.p.needsUpdate=true;t.c.needsUpdate=true;}t.index=f.index;return t;
+}
+function frame(s,i,j,blend){const key=i+':'+j,u=s.material.uniforms;if(s.key!==key){const a=slot(s,s.frames[i],j),b=i===j?a:slot(s,s.frames[j],i);u.pa.value=a.p;u.pb.value=b.p;u.ca.value=a.c;u.cb.value=b.c;s.key=key;}u.blend.value=blend;}
+async function load(){if(loading||!states.every(s=>s.file))return;loading=true;ready=false;try{
+ if(!renderer.capabilities.isWebGL2)throw Error('WebGL 2 required');
+ for(const s of states){await prepare(s);mount(s);}
+ ready=true;clock=0;last=0;playing=true;$('play').disabled=false;$('intro').hidden=true;$('names').hidden=false;
+ }catch(e){$('progress').textContent='Error: '+e.message+' — refresh to try again';}finally{loading=false;}}
+for(const [i,id] of ['left','right'].entries())$(id).onchange=e=>{if(loading||ready)return;states[i].file=e.target.files[0];if(states[i].file){document.querySelector('label[for="'+id+'"]').textContent='✓ '+states[i].name;$('progress').textContent='Selected '+states[i].name;}load();};
+$('play').onclick=()=>{playing=!playing;$('play').textContent=playing?'Pause':'Play';};
+$('orbit').onclick=()=>{orbit=!orbit;$('orbit').textContent=orbit?'Orbit on':'Orbit off';if(!orbit)for(const s of states)if(s.root)s.root.rotation.y=0;};
+$('size').oninput=()=>{for(const s of states)if(s.material)s.material.uniforms.sizeScale.value=Number($('size').value);};
+$('detail').onchange=()=>{const n=Number($('detail').value);for(const s of states)if(s.material){s.material.uniforms.samples.value=n;s.geometry.setDrawRange(0,s.info.n*n);}};
+$('reset').onclick=reset;$('reload').onclick=()=>location.reload();
+controls.addEventListener('start',()=>dragging=true);controls.addEventListener('end',()=>dragging=false);
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);for(const s of states)if(s.material)s.material.uniforms.pixelScale.value=renderer.domElement.height/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2)));});
+document.addEventListener('visibilitychange',()=>last=0);
+function animate(now){requestAnimationFrame(animate);if(document.hidden)return;const dt=last?Math.min((now-last)/1000,.15):0;last=now;
+ if(ready){if(playing)clock+=dt;for(const s of states){const t=(clock*s.info.fps)%s.info.count,i=Math.floor(t),j=Math.min(i+1,s.info.count-1);frame(s,i,j,j===i?0:t-i);if(orbit&&!dragging)s.root.rotation.y=Math.sin(clock*.24)*.23;}ticks++;if(!report)report=now;if(now-report>1000){const fps=Math.round(ticks*1000/(now-report)),n=states.reduce((sum,s)=>sum+s.info.n,0);$('status').textContent=fps+' render fps · '+n.toLocaleString()+' source points · up to '+(n*Number($('detail').value)).toLocaleString()+' samples · fully loaded';report=now;ticks=0;}}
+ controls.update();renderer.render(scene,camera);}
+requestAnimationFrame(animate);
+</script></body></html>

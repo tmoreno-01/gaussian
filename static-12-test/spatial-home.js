@@ -143,7 +143,7 @@
     active = state;
     const localMeshes = new Map(), usedFiles = new Set();
     let localBusy = false;
-    const importers=[];
+    const importers=[],messages=[];
     const localList = document.getElementById("local-captures");
     function countLocal() {
       if(countLabel) countLabel.textContent = (captures.length+localMeshes.size) + " / 12 captures · " + localMeshes.size + " / 6 new scans loaded";
@@ -153,7 +153,7 @@
       for(let i=0;i<6;i++){
         const item=localSlots[i], row=document.createElement("div");row.className="capture-row";
         const name=document.createElement(item?"a":"span");name.textContent=item?item.name:"Additional unique scan "+(i-3);
-        if(item){name.href=item.url;name.target="_blank";name.rel="noopener noreferrer";name.title=item.author+" — source";}
+        if(item){name.href=item.url;name.target="_blank";name.rel="noopener noreferrer";name.title=item.author+" — source";if(i<4)name.textContent+=" · "+item.author+" (CC BY 4.0, reduced preview)";}
         const input=document.createElement("input");input.type="file";input.accept=".ply";input.setAttribute("aria-label","Select "+name.textContent+" PLY");
         const msg=document.createElement("small");msg.textContent=item?"Choose downloaded standard PLY":"Use a cleared, different graffiti capture";
         const flip=document.createElement("button");flip.type="button";flip.textContent="Flip";flip.disabled=true;
@@ -183,7 +183,7 @@
           }catch(err){msg.textContent=err.message||String(err);return false;}finally{localBusy=false;input.disabled=false;input.value="";}
         };
         input.onchange=()=>importFile(input.files?.[0]);importers.push(importFile);
-        row.append(name,input,flip,yaw,msg);localList.append(row);
+        messages.push(msg);row.append(name,input,flip,yaw,msg);localList.append(row);
       }
     }
     const bulk=document.getElementById("bulk-ply"), bulkStatus=document.getElementById("bulk-status");
@@ -204,6 +204,29 @@
       }finally{bulk.disabled=false;bulk.value="";}
     };
     countLocal();
+
+    // Models prepared from public, downloadable CC BY sources. Raw repository
+    // fallback also works when a bot commit does not trigger a Pages rebuild.
+    async function loadHostedModels(){
+      for(let i=0;i<4;i++){
+        if(state.disposed)return;
+        if(localMeshes.has(i))continue;
+        const id=localSlots[i].id;
+        if(messages[i])messages[i].textContent="Checking automatic preview…";
+        try{
+          const response=await fetch("https://raw.githubusercontent.com/tmoreno-01/gaussian/main/static-12-test/models/"+id+".ply",{cache:"no-cache",signal:AbortSignal.timeout(30000)});
+          if(!response.ok)throw Error("Preview model not yet available");
+          const blob=await response.blob();
+          if(state.disposed)return;
+          if(localMeshes.has(i))continue;
+          while(localBusy&&!state.disposed)await new Promise(r=>setTimeout(r,100));
+          if(state.disposed||localMeshes.has(i))continue;
+          const ok=await importers[i](new File([blob],id+".ply",{type:"application/octet-stream"}));
+          if(ok&&messages[i])messages[i].textContent+=" · automatic · CC BY 4.0";
+        }catch(e){if(messages[i]&&!localMeshes.has(i))messages[i].textContent="Automatic preview unavailable · "+e.message;}
+      }
+      for(let i=4;i<6;i++)if(messages[i]&&!localMeshes.has(i))messages[i].textContent="Polycam model export and reuse permission not verified";
+    }
 
     let nextIndex = 0;
     let inFlight = 0;
@@ -232,6 +255,7 @@
     let tickInterval = 1000 / 60;
     let pendingResolution = false;
     let needsRender = true;
+    if(new URLSearchParams(location.search).get("count")!=="6")setTimeout(loadHostedModels,1500);
     const targetInterval = 1000 / 60;
     let sampleStart = 0, renderedFrames = 0, blockedFrames = 0, cpuCost = 0, longTicks = 0, tickCount = 0;
     let stableWindows = 0, lastResize = 0;

@@ -39,9 +39,9 @@
   // assigned a fresh size role independently of identity on every reload.
   const random=()=>Math.random(),between=(a,b)=>a+(b-a)*random();
   const targetCount=originalCaptures.length+localSlots.length;
-  const modes=["broken orbit","rising spiral","dense cluster","wide constellation","vertical wheel","layered islands"];
-  const mode=modes[Math.floor(random()*modes.length)],phase=between(0,Math.PI*2),orbitSpeed=between(.019,.065)*(random()<.5?-1:1);
-  const layoutTilt=mode==="vertical wheel"?between(.9,1.35):mode==="broken orbit"?between(-.52,.52):between(-.23,.23);
+  const modes=["broken orbit","dense cluster","wide constellation","layered islands"];
+  const mode=modes[Math.floor(random()*modes.length)],phase=between(0,Math.PI*2),orbitSpeed=.035;
+  const layoutTilt=0;
   const roles=Array.from({length:targetCount},(_,i)=>i<3?between(1.75,2.45):i<7?between(.9,1.45):between(.40,.80));
   const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
   shuffle(roles);
@@ -49,14 +49,12 @@
   function makePose(i){
     const k=order[i%targetCount],a=phase+k/targetCount*Math.PI*2+between(-.17,.17);
     let radius,y,x,z;
-    if(mode==="dense cluster"){radius=between(1.6,4.5);y=between(-1.6,1.6);}
-    else if(mode==="wide constellation"){radius=between(2.7,7.2);y=between(-3.1,3.1);}
-    else if(mode==="rising spiral"){radius=between(2.9,5.6);y=(k-(targetCount-1)/2)*.82+between(-.35,.35);}
-    else if(mode==="vertical wheel"){radius=between(3.1,5.5);y=between(-.55,.55);}
-    else if(mode==="layered islands"){radius=k%3===0?between(1.2,2.4):between(4.5,6.8);y=(k%3-1)*2.2+between(-.5,.5);}
-    else{radius=between(3.3,6.2);y=between(-1.1,1.2);}
+    if(mode==="dense cluster"){radius=between(2.2,4.6);y=between(-.30,.30);}
+    else if(mode==="wide constellation"){radius=between(3.2,6.4);y=between(-.48,.48);}
+    else if(mode==="layered islands"){radius=k%3===0?between(1.8,3.0):between(4.5,6.0);y=between(-.40,.40);}
+    else{radius=between(3.3,5.9);y=between(-.25,.25);}
     x=Math.sin(a)*radius;z=Math.cos(a)*radius;
-    return {x,y,z,yaw:a+Math.PI+between(-1.05,1.05),pitch:between(-.28,.28),roll:between(-.24,.24),scale:roles[i%targetCount]};
+    return {x,y,z,yaw:a+Math.PI+between(-.8,.8),pitch:between(-.045,.045),roll:between(-.035,.035),scale:roles[i%targetCount]};
   }
   const poses=Array.from({length:targetCount},(_,i)=>makePose(i));
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -111,8 +109,8 @@
     scene.background = new THREE.Color(backgroundColor());
 
     const camera = new THREE.PerspectiveCamera(43, (canvasRoot.clientWidth || window.innerWidth) / Math.max(1, canvasRoot.clientHeight || window.innerHeight), .05, 120);
-    const cameraAngle=between(0,Math.PI*2), cameraDistance=(mode==='dense cluster'?between(10,14):between(14,21))*Math.max(1,.85/camera.aspect);
-    camera.position.set(Math.sin(cameraAngle)*cameraDistance,between(-1.1,7.2),Math.cos(cameraAngle)*cameraDistance);
+    const cameraAngle=between(0,Math.PI*2), cameraDistance=15.5*Math.max(1,.85/camera.aspect);
+    camera.position.set(Math.sin(cameraAngle)*cameraDistance,cameraDistance*.17,Math.cos(cameraAngle)*cameraDistance);
     camera.lookAt(0, 0, 0);
 
     const renderer = new THREE.WebGLRenderer({
@@ -243,7 +241,12 @@
         const id=localSlots[i].id;
         if(messages[i])messages[i].textContent="Checking automatic preview…";
         try{
-          const response=await fetch("https://raw.githubusercontent.com/tmoreno-01/gaussian/main/static-12-test/models/"+id+".ply",{cache:"no-cache",signal:AbortSignal.timeout(30000)});
+          const options=()=>({cache:"force-cache",signal:AbortSignal.timeout(30000)});
+          // Prefer same-origin static assets so the production site can use
+          // Cloudflare's free CDN and ordinary browser caching.
+          let response;
+          try{response=await fetch(new URL("./models/"+id+".ply",location.href),options());}catch(_){}
+          if(!response?.ok||response.headers.get("content-type")?.includes("text/html"))response=await fetch("https://raw.githubusercontent.com/tmoreno-01/gaussian/main/static-12-test/models/"+id+".ply",options());
           if(!response.ok)throw Error("Preview model not yet available");
           const blob=await response.blob();
           if(state.disposed)return;

@@ -34,7 +34,7 @@
   const captures = sixOnly ? originalCaptures : [...originalCaptures,...extras];
   const countLabel = document.getElementById("capture-count");
   if(countLabel)countLabel.textContent = captures.length + " unique captures · " + (captures.length===12?"complete":"additional scans pending");
-  const localSlots = [{"id":"de67a02f","name":"Leake Street tunnel","author":"artfletch","url":"https://superspl.at/scene/de67a02f"},{"id":"77ec8209","name":"Nexels Graffiti","author":"transkatgirl","url":"https://superspl.at/scene/77ec8209"},{"id":"92d261b7","name":"Skatepark bowl","author":"dragonheart000","url":"https://superspl.at/scene/92d261b7"},{"id":"0da683d4","name":"Stone arch bridge","author":"ethan3111","url":"https://superspl.at/scene/0da683d4"}];
+  const localSlots = [{"id":"de67a02f","name":"Leake Street tunnel","author":"artfletch","url":"https://superspl.at/scene/de67a02f"},{"id":"77ec8209","name":"Nexels Graffiti","author":"transkatgirl","url":"https://superspl.at/scene/77ec8209"},{"id":"92d261b7","name":"Skatepark bowl","author":"dragonheart000","url":"https://superspl.at/scene/92d261b7"},{"id":"0da683d4","name":"Stone arch bridge","author":"ethan3111","url":"https://superspl.at/scene/0da683d4"},{"id":"309265EC-DDEB-4EB2-BA5F-BC329B0258EB","name":"Bayshore Roundhouse","author":"Polycam source · reuse terms unverified","url":"https://poly.cam/explore/capture/309265EC-DDEB-4EB2-BA5F-BC329B0258EB/bayshore%2Broundhouse"},{"id":"ddc7cb49-4350-47e1-aad4-6cee046e3574","name":"Lostplacetest3","author":"Polycam source · reuse terms unverified","url":"https://poly.cam/explore/capture/ddc7cb49-4350-47e1-aad4-6cee046e3574/Lostplacetest3"}];
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   let active = null;
   let loading = false;
@@ -143,9 +143,10 @@
     active = state;
     const localMeshes = new Map(), usedFiles = new Set();
     let localBusy = false;
+    const importers=[];
     const localList = document.getElementById("local-captures");
     function countLocal() {
-      if(countLabel) countLabel.textContent = (captures.length+localMeshes.size) + " distinct capture slots · " + localMeshes.size + " local files loaded";
+      if(countLabel) countLabel.textContent = (captures.length+localMeshes.size) + " / 12 captures · " + localMeshes.size + " / 6 new scans loaded";
     }
     if(localList){
       localList.replaceChildren();
@@ -159,8 +160,8 @@
         flip.onclick=()=>{const mesh=localMeshes.get(i)?.mesh;if(mesh){mesh.rotation.x+=Math.PI;needsRender=true;}};
         const yaw=document.createElement("button");yaw.type="button";yaw.textContent="Turn 90°";yaw.disabled=true;
         yaw.onclick=()=>{const mesh=localMeshes.get(i)?.mesh;if(mesh){mesh.rotation.y+=Math.PI/2;needsRender=true;}};
-        input.onchange=async()=>{
-          const file=input.files?.[0];if(!file)return;
+        const importFile=async(file)=>{
+          if(!file)return false;
           if(localBusy){msg.textContent="Finish the current import first";input.value="";return;}
           const key=file.name+":"+file.size;
           if(usedFiles.has(key)&&localMeshes.get(i)?.key!==key){msg.textContent="This file is already in the composition";input.value="";return;}
@@ -178,12 +179,30 @@
             holder.add(mesh);orbit.add(holder);state.splats.push(mesh);localMeshes.set(i,{mesh,holder,key});usedFiles.add(key);
             if(localMeshes.size===1&&!old){camera.position.set(2.65,2.2,12.1);controls.maxDistance=24;controls.update();}
             mesh.updateForCamera(camera,renderer,performance.now());needsRender=true;countLocal();flip.disabled=yaw.disabled=false;
-            msg.textContent=data.count.toLocaleString()+" / "+data.sourceCount.toLocaleString()+" Gaussians";
-          }catch(err){msg.textContent=err.message||String(err);}finally{localBusy=false;input.disabled=false;input.value="";}
+            msg.textContent=data.count.toLocaleString()+" / "+data.sourceCount.toLocaleString()+" Gaussians";return true;
+          }catch(err){msg.textContent=err.message||String(err);return false;}finally{localBusy=false;input.disabled=false;input.value="";}
         };
+        input.onchange=()=>importFile(input.files?.[0]);importers.push(importFile);
         row.append(name,input,flip,yaw,msg);localList.append(row);
       }
     }
+    const bulk=document.getElementById("bulk-ply"), bulkStatus=document.getElementById("bulk-status");
+    const aliases=[/leake|de67a02f/i,/nexels|77ec8209/i,/skate|92d261b7/i,/stone|arch|bridge|0da683d4/i,/bayshore|roundhouse|309265ec/i,/lostplace|ddc7cb49/i];
+    if(bulk)bulk.onchange=async()=>{
+      if(localBusy)return;
+      const files=Array.from(bulk.files||[]), unknown=[], matched=new Map(), ambiguous=[];
+      for(const file of files){
+        const hits=aliases.map((r,i)=>r.test(file.name)?i:-1).filter(i=>i>=0);
+        if(hits.length!==1){unknown.push(file.name);continue;}
+        const i=hits[0];if(matched.has(i)){ambiguous.push(i);continue;}matched.set(i,file);
+      }
+      for(const i of ambiguous)matched.delete(i);
+      bulk.disabled=true;let loaded=0;
+      try{
+        for(const [i,file] of matched){bulkStatus.textContent="Importing "+localSlots[i].name+"…";if(await importers[i](file))loaded++;}
+        bulkStatus.textContent=loaded+" imported. "+(unknown.length||ambiguous.length?"Unmatched or ambiguous filenames: select their named slots manually.":"");
+      }finally{bulk.disabled=false;bulk.value="";}
+    };
     countLocal();
 
     let nextIndex = 0;

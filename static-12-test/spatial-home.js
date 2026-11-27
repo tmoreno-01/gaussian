@@ -11,11 +11,11 @@
   const signal = name => window.dispatchEvent(new Event("lifeafterlogic:" + name));
 
   const originalCaptures = [
-    { id: "3582f3b0-565e-443f-9165-3571c0721fbc", scale: .434, y: -.14, tilt: -.035 },
+    { id: "3582f3b0-565e-443f-9165-3571c0721fbc", scale: .5208, y: -.14, tilt: -.035 },
     { id: "1a487b86-38a7-466d-856b-5d9ad2f84fab", scale: .64, y: .22, tilt: .045 },
-    { id: "b101171b-cf5f-4669-ab44-d9fa39e69898", scale: .42, y: -.28, tilt: .025 },
+    { id: "b101171b-cf5f-4669-ab44-d9fa39e69898", scale: .4536, y: -.28, tilt: .025 },
     { id: "9c6e8bac-3b79-4f39-a605-58999d33c33c", scale: .72, y: .30, tilt: -.055 },
-    { id: "94f2efd7-f65d-4b7f-b455-536e95643bad", scale: .42, y: -.10, tilt: .035 },
+    { id: "94f2efd7-f65d-4b7f-b455-536e95643bad", scale: .4536, y: -.10, tilt: .035 },
     { id: "3adabd81-8ef0-4257-92cb-a2929ef8aa8a", scale: .68, y: .16, tilt: -.025 }
   ];
 
@@ -35,7 +35,7 @@
   const countLabel = document.getElementById("capture-count");
   if(countLabel)countLabel.textContent = "Loading graffiti captures…";
   const touchDevice = matchMedia("(any-pointer: coarse)").matches;
-  const allLocalSlots = [{"id":"f0137e7f","name":"Freeman Alley","author":"matousekfoto","url":"https://superspl.at/scene/f0137e7f","licensed":true},{"id":"f4897475","name":"Artillery Passage","author":"David Fletcher","url":"https://superspl.at/scene/f4897475","licensed":true,"fullDetail":true,"orientation":"z-flip"},{"id":"suvilahti-skatepark","name":"Suvilahti DIY — cropped skatepark","author":"flyAR","url":"https://flyar.fi/work/suvilahti-diy-project-eternal","localOnly":true,"fullDetail":true,"orientation":"none"}];
+  const allLocalSlots = [{"id":"f0137e7f","name":"Freeman Alley","author":"matousekfoto","url":"https://superspl.at/scene/f0137e7f","licensed":true},{"id":"f4897475","name":"Artillery Passage","author":"David Fletcher","url":"https://superspl.at/scene/f4897475","licensed":true,"orientation":"z-flip"},{"id":"suvilahti-skatepark","name":"Suvilahti DIY — cropped skatepark","author":"flyAR","url":"https://flyar.fi/work/suvilahti-diy-project-eternal","localOnly":true,"fullDetail":true,"orientation":"none"}];
   const localSlots = touchDevice ? allLocalSlots.filter(item => item.id !== "f4897475") : allLocalSlots;
   // A new spatial composition, not just a shuffled ring. Each model is
   // assigned a fresh size role independently of identity on every reload.
@@ -71,7 +71,7 @@
     }
     // The alley's narrow geometry needs a substantial footprint.
     if(id==="f0137e7f")return Math.min(6.2,Math.max(3.1,role*between(1.28,1.62)));
-    if(id==="suvilahti-skatepark")return .64*Math.min(4.6,Math.max(3.6,role*1.55));
+    if(id==="suvilahti-skatepark")return .512*Math.min(4.6,Math.max(3.6,role*1.55));
     if(id==="f4897475") return between(.22, .34);
     return Math.min(5.35,role*between(.96,1.20));
   }
@@ -299,7 +299,7 @@
         const name=document.createElement(item?"a":"span");name.textContent=item?item.name:"Additional unique scan "+(i-3);
         if(item){name.href=item.url;name.target="_blank";name.rel="noopener noreferrer";name.title=item.author+" — source";if(item.licensed)name.textContent+=" · "+item.author+(item.fullDetail?" (CC BY 4.0, full-detail source)":" (CC BY 4.0, reduced preview)");}
         const input=document.createElement("input");input.type="file";input.accept=".ply";input.setAttribute("aria-label","Select "+name.textContent+" PLY");if(item.id==="f4897475")input.hidden=true;
-        const msg=document.createElement("small");msg.textContent=item?.id==="suvilahti-skatepark"?"Choose skatepark preview or original PLY":item?.id==="f4897475"?"Original 5M Gaussian source · streamed detail":"Choose downloaded standard PLY";
+        const msg=document.createElement("small");msg.textContent=item?.id==="suvilahti-skatepark"?"Choose skatepark preview or original PLY":item?.id==="f4897475"?"Cropped passage preview":"Choose downloaded standard PLY";
         const flip=document.createElement("button");flip.type="button";flip.textContent="Flip Y";flip.disabled=true;
         flip.onclick=()=>{const mesh=localMeshes.get(i)?.mesh;if(mesh){mesh.scale.y*=-1;needsRender=true;}};
         const yaw=document.createElement("button");yaw.type="button";yaw.textContent="Turn 90°";yaw.disabled=true;
@@ -347,8 +347,8 @@
               msg.textContent=n.toLocaleString()+" full-resolution Gaussians · spherical harmonics · adaptive LOD";
               return true;
             }
-            const {readPly,makeGaussian}=await import("./local-gaussians.js?v=skatepark-density-3");
-            const data=await readPly(file,touchDevice?140000:320000,cleanupEnabled);
+            const {readPly,makeGaussian}=await import("./local-gaussians.js?v=ced280d6");
+            const data=await readPly(file,touchDevice?140000:320000,cleanupEnabled,item.id==="f4897475");
             if(state.disposed)return false;
             const mesh=makeGaussian(THREE,data,item.orientation||"x-flip",item.splatSize||1,item.opacityBoost||1);
             removeLocalEntry(i);
@@ -398,56 +398,6 @@
           if(file&&!state.disposed&&!localMeshes.has(i)){
             while(localBusy&&!state.disposed)await new Promise(r=>setTimeout(r,100));
             if(!state.disposed&&!localMeshes.has(i)&&await importers[i](file)&&messages[i])messages[i].textContent+=" · original remembered locally";
-          }
-          continue;
-        }
-        if(id==="f4897475"){
-          if(!SplatMesh){if(messages[i])messages[i].textContent="Spark renderer unavailable · other captures remain active";continue;}
-          if(messages[i])messages[i].textContent="Loading original 5M-Gaussian scan · high-detail streamed LOD…";
-          const holder=new THREE.Group(),normalize=new THREE.Group(),meshes=[];
-          const poseIndex=captures.length+i,pose=poses[poseIndex];
-          holder.position.set(pose.x,pose.y,pose.z);holder.rotation.set(pose.pitch,pose.yaw,pose.roll);
-          holder.scale.setScalar(assignedScales.get(id));
-          const factor=4.2/14.938400268554688;
-          const center={x:-.388,y:-.971,z:-.666};
-          normalize.scale.setScalar(factor);
-          normalize.rotation.z=Math.PI;
-          normalize.position.set(center.x*factor,center.y*factor,-center.z*factor);
-          holder.add(normalize);orbit.add(holder);
-          try{
-            // Use capture-space units so the cleanup follows the random layout scale.
-            const { Dyno, Gsplat } = sparkModule.dyno;
-            const bloomFilter = new Dyno({
-              inTypes: { gsplat: Gsplat }, outTypes: { gsplat: Gsplat },
-              statements: ({ inputs, outputs }) => {
-                const g = outputs.gsplat;
-                return [
-                  `${g} = ${inputs.gsplat};`,
-                  `float extent = max(max(${g}.scales.x, ${g}.scales.y), ${g}.scales.z);`,
-                  `float radius = distance(${g}.center, vec3(-0.388, -0.971, -0.666));`,
-                  `if (radius + 3.0 * extent > 7.5 || extent > mix(0.32, 0.12, smoothstep(3.0, 7.5, radius))) { ${g}.rgba.a = 0.0; }`
-                ];
-              }
-            });
-            for(let j=0;j<5;j++){
-              const url="./models/artillery/artillery-0_"+j+"-lod.rad";
-              const mesh=new SplatMesh({url,paged:true,lodScale:touchDevice?.70:1.25});
-              mesh.objectModifier=bloomFilter;
-              await mesh.initialized;
-              mesh.maxSh=touchDevice?1:3;
-              mesh.updateGenerator();
-              if(state.disposed){mesh.dispose();return;}
-              normalize.add(mesh);meshes.push(mesh);state.splats.push(mesh);
-              if(messages[i])messages[i].textContent="Artillery Passage · "+(j+1)+"/5 full-detail regions ready";
-              needsRender=true;if(!state.raf)animate();
-            }
-            localMeshes.set(i,{mesh:normalize,holder,key:"artillery-full-rad-v1",poseIndex,sparkMeshes:meshes});
-            usedFiles.add("artillery-full-rad-v1");applySolo();countLocal();updateProgress();
-            if(messages[i])messages[i].textContent="5M-source scan · streamed detail · CC BY 4.0";
-          }catch(error){
-            orbit.remove(holder);meshes.forEach(mesh=>{try{mesh.dispose();}catch(_){}});
-            state.splats=state.splats.filter(mesh=>!meshes.includes(mesh));
-            if(messages[i])messages[i].textContent="High-detail Artillery load failed · "+(error.message||String(error));
           }
           continue;
         }

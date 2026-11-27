@@ -70,7 +70,7 @@
     // The alley's narrow geometry needs a substantial footprint.
     if(id==="f0137e7f")return Math.min(6.2,Math.max(3.1,role*between(1.28,1.62)));
     if(id==="suvilahti-skatepark")return Math.min(4.6,Math.max(3.6,role*1.55));
-    if(id==="f4897475")return Math.min(2.8,Math.max(1.45,role*1.08));
+    if(id==="f4897475")return Math.min(6.2,Math.max(4.4,role*1.85));
     return Math.min(5.35,role*between(.96,1.20));
   }
   // Sample each model's scale once: opening camera selection and loading
@@ -90,7 +90,7 @@
     const candidates=[],start=between(0,Math.PI*2);
     for(let i=0;i<24;i++){
       const angle=start+i*Math.PI*2/24;
-      for(const distance of [9.2,10,10.8,11.6,12.4].map(x=>x*aspectFactor)){
+      for(const distance of [9.2,10,10.8,11.6,12.4,13.2,14,14.8,15.6].map(x=>x*aspectFactor)){
         const cx=Math.sin(angle)*distance,cz=Math.cos(angle)*distance,cy=distance*.30;
         const l=Math.hypot(distance,cy),sin=Math.sin(angle),cos=Math.cos(angle);
         const rects=[];let penalty=0;

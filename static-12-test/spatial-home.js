@@ -246,6 +246,31 @@
     controls.panSpeed = .45;
 
     const orbit = new THREE.Group();
+    // Each fragment visits part of the space towards a neighbour, then returns.
+    // Stagger the visits so temporary alignments travel through the composition.
+    const motionTracks = poses.map((pose,index) => {
+      const neighbour = poses[(index + 1) % poses.length];
+      const reach = between(.12,.28);
+      return {
+        pose, dx:(neighbour.x-pose.x)*reach, dz:(neighbour.z-pose.z)*reach,
+        lift:between(.12,.42), turn:between(.08,.26)*(random()<.5?-1:1),
+        rate:between(.14,.32), phase:between(0,Math.PI*2),
+        wavePhase:index*2*Math.PI/poses.length, holder:null
+      };
+    });
+    let motionTime = 0;
+    function moveFragments(delta) {
+      motionTime += delta;
+      for (const t of motionTracks) {
+        if (!t.holder || !t.holder.visible) continue;
+        const phase=t.phase+t.rate*motionTime;
+        const drift=(Math.sin(phase)-Math.sin(t.phase))*.5;
+        const wave=(Math.cos(t.wavePhase)-Math.cos(t.wavePhase+motionTime*.21))*.5;
+        const p=t.pose;
+        t.holder.position.set(p.x+t.dx*wave,p.y+t.lift*drift,p.z+t.dz*wave);
+        t.holder.rotation.set(p.pitch+.045*wave,p.yaw+t.turn*drift,p.roll+.045*drift);
+      }
+    }
     scene.add(orbit);orbit.rotation.x=layoutTilt;
 
     const state = {
@@ -311,7 +336,7 @@
             const holder=new THREE.Group(),poseIndex=captures.length+i,pose=poses[poseIndex];
             holder.position.set(pose.x,pose.y,pose.z);holder.rotation.set(pose.pitch,pose.yaw,pose.roll);
             holder.scale.setScalar(assignedScales.get(item.id));
-            holder.add(mesh);orbit.add(holder);state.splats.push(mesh);localMeshes.set(i,{mesh,holder,key,poseIndex});usedFiles.add(key);applySolo();
+            motionTracks[poseIndex].holder=holder;holder.add(mesh);orbit.add(holder);state.splats.push(mesh);localMeshes.set(i,{mesh,holder,key,poseIndex});usedFiles.add(key);applySolo();
             needsRender=true;countLocal();updateProgress();flip.disabled=yaw.disabled=false;
             msg.textContent=data.count.toLocaleString()+" / "+data.sourceCount.toLocaleString()+" Gaussians"+(data.removed?" · "+data.removed.toLocaleString()+" floaters filtered":"");return true;
           }catch(err){msg.textContent=err.message||String(err);return false;}finally{localBusy=false;input.disabled=false;input.value="";}
@@ -494,7 +519,7 @@
     function addCapture(item, index) {
       const holder = new THREE.Group(),pose=poses[index];
       holder.position.set(pose.x,pose.y,pose.z);holder.rotation.set(pose.pitch,pose.yaw,pose.roll);holder.scale.setScalar(assignedScales.get(item.id));
-      orbit.add(holder);lumaHolders.set(item.id,holder);applySolo();
+      motionTracks[index].holder=holder;orbit.add(holder);lumaHolders.set(item.id,holder);applySolo();
 
       const splat = new LumaSplatsThree({
         source: "https://lumalabs.ai/capture/" + item.id,
@@ -555,7 +580,8 @@
       const moving = revealed && !reducedMotion.matches && !responsive && now - lastInteraction > 4200;
       const loadingScene = completed < captures.length;
       if(!revealed&&originalLoaded+localMeshes.size>0&&now-openingStarted>8500)revealPending=true;
-      const continuous = responsive || moving || loadingScene;
+      const fragmentsMoving = revealed && !reducedMotion.matches;
+      const continuous = responsive || fragmentsMoving || loadingScene;
       if (!continuous && !needsRender && !pendingResolution) {
         resetStats(now);
         nextDue = 0;
@@ -583,6 +609,7 @@
       lastRenderedAt = now;
       // Anchor the next deadline to the actual presentation opportunity.
       nextDue = continuous ? now + interval : 0;
+      if (fragmentsMoving) moveFragments(delta);
       if (moving) orbit.rotation.y += delta * orbitSpeed;
       needsRender = false;
       controls.update();
